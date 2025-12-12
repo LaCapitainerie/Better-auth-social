@@ -1,7 +1,7 @@
 {
-  "name": "better-auth-university",
-  "version": "0.3.0",
-  "description": "A university plugin for Better Auth that allows restriction of email domains.",
+  "name": "better-auth-social",
+  "version": "1.0.0",
+  "description": "A social network plugin for Better Auth with friends, friend requests, chat, and group chat features.",
   "author": "Jaren Goldberg <fyrlex@gmail.com>",
   "main": "dist/index.js",
   "type": "module",
@@ -34,7 +34,11 @@
     "better-auth",
     "auth",
     "plugin",
-    "university"
+    "social-network",
+    "friends",
+    "chat",
+    "group-chat",
+    "messaging"
   ],
   "license": "MIT",
   "bugs": {

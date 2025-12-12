@@ -1,9 +1,9 @@
 import { BetterAuthClientPlugin } from 'better-auth';
-import { universityResolver } from './index.js';
+import { socialNetwork } from './index.js';
 
-export const universityResolverClient = () => {
+export const socialNetworkClient = () => {
   return {
-    id: "university-resolver",
-    $InferServerPlugin: {} as ReturnType<typeof universityResolver>,
+    id: "social-network",
+    $InferServerPlugin: {} as ReturnType<typeof socialNetwork>,
   } satisfies BetterAuthClientPlugin;
 };
