@@ -40,10 +40,98 @@ const auth = betterAuth({
   plugins: [
     socialNetwork({
       allowSelfFriendRequest: false, // Par défaut: false
+      maxGroupSize: 50, // Taille maximale des groupes (optionnel)
+      // ou une fonction async
+      maxGroupSize: async () => {
+        // Logique dynamique pour déterminer la taille maximale
+        return 100;
+      },
+      hooks: {
+        onFriendRequestSend: async (data) => {
+          console.log("Friend request sent:", data);
+        },
+        onFriendRequestAccept: async (data) => {
+          console.log("Friend request accepted:", data);
+        },
+        onGroupChatJoin: async (data) => {
+          console.log("User joined group:", data);
+        },
+        // ... autres hooks
+      },
     }),
   ],
 });
 ```
+
+### Options
+
+#### `allowSelfFriendRequest`
+- **Type**: `boolean`
+- **Défaut**: `false`
+- **Description**: Permet aux utilisateurs d'envoyer des demandes d'amis à eux-mêmes.
+
+#### `maxGroupSize`
+- **Type**: `number | (() => Promise<number>)`
+- **Défaut**: `undefined` (pas de limite)
+- **Description**: Taille maximale des membres dans un groupe de chat. Peut être un nombre strict ou une fonction async qui retourne un nombre.
+
+#### `hooks`
+- **Type**: `SocialNetworkHooks`
+- **Description**: Hooks pour intercepter les événements du réseau social.
+
+### Hooks disponibles
+
+Tous les hooks sont optionnels et peuvent être des fonctions async ou synchrones :
+
+- **`onFriendRequestSend`** : Appelé lorsqu'une demande d'ami est envoyée
+  ```typescript
+  onFriendRequestSend?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
+  ```
+
+- **`onFriendRequestAccept`** : Appelé lorsqu'une demande d'ami est acceptée
+  ```typescript
+  onFriendRequestAccept?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
+  ```
+
+- **`onFriendRequestReject`** : Appelé lorsqu'une demande d'ami est refusée
+  ```typescript
+  onFriendRequestReject?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
+  ```
+
+- **`onFriendRemove`** : Appelé lorsqu'un ami est supprimé
+  ```typescript
+  onFriendRemove?: (data: { userId: string; friendId: string }) => Promise<void> | void;
+  ```
+
+- **`onChatCreate`** : Appelé lorsqu'un chat privé est créé
+  ```typescript
+  onChatCreate?: (data: { chatId: string; user1Id: string; user2Id: string }) => Promise<void> | void;
+  ```
+
+- **`onChatMessageSend`** : Appelé lorsqu'un message est envoyé dans un chat privé
+  ```typescript
+  onChatMessageSend?: (data: { messageId: string; chatId: string; senderId: string; content: string }) => Promise<void> | void;
+  ```
+
+- **`onGroupChatCreate`** : Appelé lorsqu'un groupe de chat est créé
+  ```typescript
+  onGroupChatCreate?: (data: { groupChatId: string; createdById: string; name: string }) => Promise<void> | void;
+  ```
+
+- **`onGroupChatJoin`** : Appelé lorsqu'un utilisateur rejoint un groupe
+  ```typescript
+  onGroupChatJoin?: (data: { groupChatId: string; userId: string; addedBy?: string }) => Promise<void> | void;
+  ```
+
+- **`onGroupChatLeave`** : Appelé lorsqu'un utilisateur quitte ou est retiré d'un groupe
+  ```typescript
+  onGroupChatLeave?: (data: { groupChatId: string; userId: string; removedBy?: string }) => Promise<void> | void;
+  ```
+
+- **`onGroupChatMessageSend`** : Appelé lorsqu'un message est envoyé dans un groupe
+  ```typescript
+  onGroupChatMessageSend?: (data: { messageId: string; groupChatId: string; senderId: string; content: string }) => Promise<void> | void;
+  ```
 
 ## API Routes
 

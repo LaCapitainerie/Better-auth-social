@@ -54,16 +54,92 @@ export interface Message {
   updatedAt: Date;
 }
 
+export interface SocialNetworkHooks {
+  /**
+   * Called when a friend request is sent
+   */
+  onFriendRequestSend?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a friend request is accepted
+   */
+  onFriendRequestAccept?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a friend request is rejected
+   */
+  onFriendRequestReject?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a friend is removed
+   */
+  onFriendRemove?: (data: { userId: string; friendId: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a chat is created
+   */
+  onChatCreate?: (data: { chatId: string; user1Id: string; user2Id: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a message is sent in a chat
+   */
+  onChatMessageSend?: (data: { messageId: string; chatId: string; senderId: string; content: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a group chat is created
+   */
+  onGroupChatCreate?: (data: { groupChatId: string; createdById: string; name: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a user joins a group chat
+   */
+  onGroupChatJoin?: (data: { groupChatId: string; userId: string; addedBy?: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a user leaves or is removed from a group chat
+   */
+  onGroupChatLeave?: (data: { groupChatId: string; userId: string; removedBy?: string }) => Promise<void> | void;
+  
+  /**
+   * Called when a message is sent in a group chat
+   */
+  onGroupChatMessageSend?: (data: { messageId: string; groupChatId: string; senderId: string; content: string }) => Promise<void> | void;
+}
+
 export interface SocialNetworkOptions {
   /**
    * Whether to allow users to send friend requests to themselves
    * Defaults to false
    */
   allowSelfFriendRequest?: boolean;
+  
+  /**
+   * Maximum number of members allowed in a group chat.
+   * Can be a strict number or an async function that returns a number.
+   * Defaults to undefined (no limit)
+   */
+  maxGroupSize?: number | (() => Promise<number>);
+  
+  /**
+   * Hooks for various social network events
+   */
+  hooks?: SocialNetworkHooks;
 }
 
 export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin => {
   const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
+  const hooks = options?.hooks || {};
+  
+  // Helper function to get max group size
+  const getMaxGroupSize = async (): Promise<number | undefined> => {
+    if (options?.maxGroupSize === undefined) {
+      return undefined;
+    }
+    if (typeof options.maxGroupSize === 'number') {
+      return options.maxGroupSize;
+    }
+    return await options.maxGroupSize();
+  };
 
   return {
     id: 'social-network',
@@ -133,6 +209,16 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
               updatedAt: new Date(),
             }
           });
+          
+          // Call hook
+          if (hooks.onFriendRequestSend) {
+            await hooks.onFriendRequestSend({
+              senderId: userId,
+              receiverId: receiverId,
+              requestId: friendRequest.id,
+            });
+          }
+          
           return ctx.json({
             friendRequest
           })
@@ -198,6 +284,15 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
           }
         });
 
+        // Call hook
+        if (hooks.onFriendRequestAccept) {
+          await hooks.onFriendRequestAccept({
+            senderId: friendRequest.senderId,
+            receiverId: friendRequest.receiverId,
+            requestId: friendRequest.id,
+          });
+        }
+
         return ctx.json({ success: true });
       }),
       rejectFriendRequest: createAuthEndpoint('/social/friend-request/reject', {
@@ -240,6 +335,15 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
             updatedAt: new Date(),
           }
         });
+
+        // Call hook
+        if (hooks.onFriendRequestReject) {
+          await hooks.onFriendRequestReject({
+            senderId: friendRequest.senderId,
+            receiverId: friendRequest.receiverId,
+            requestId: friendRequest.id,
+          });
+        }
 
         return ctx.json({ success: true });
       }),
@@ -322,6 +426,14 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
           ]
         });
 
+        // Call hook
+        if (hooks.onFriendRemove) {
+          await hooks.onFriendRemove({
+            userId: userId,
+            friendId: friendId,
+          });
+        }
+
         return ctx.json({ success: true });
       }),
       createChat: createAuthEndpoint('/social/chat/create', {
@@ -381,6 +493,15 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
             updatedAt: new Date(),
           }
         });
+
+        // Call hook
+        if (hooks.onChatCreate) {
+          await hooks.onChatCreate({
+            chatId: chat.id,
+            user1Id: userId,
+            user2Id: friendId,
+          });
+        }
 
         return ctx.json({ chat });
       }),
@@ -507,6 +628,16 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
           }
         });
 
+        // Call hook
+        if (hooks.onChatMessageSend) {
+          await hooks.onChatMessageSend({
+            messageId: message.id,
+            chatId: chatId,
+            senderId: userId,
+            content: content,
+          });
+        }
+
         return ctx.json({ message });
       }),
       createGroupChat: createAuthEndpoint('/social/group-chat/create', {
@@ -549,8 +680,25 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
 
         // Add other members if provided
         if (Array.isArray(memberIds)) {
+          const maxSize = await getMaxGroupSize();
+          const currentMemberCount = 1; // Creator already added
+          
           for (const memberId of memberIds) {
             if (memberId !== userId) {
+              // Check max group size
+              if (maxSize !== undefined) {
+                const currentMembers = await adapter.findMany<GroupChatMember>({
+                  model: 'group_chat_member',
+                  where: [{ field: 'groupChatId', value: groupChat.id }]
+                });
+                
+                if (currentMembers.length >= maxSize) {
+                  throw new APIError('BAD_REQUEST', { 
+                    message: `Group has reached maximum size of ${maxSize} members` 
+                  });
+                }
+              }
+              
               await adapter.create<GroupChatMember>({
                 model: 'group_chat_member',
                 data: {
@@ -560,8 +708,26 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
                   joinedAt: new Date(),
                 }
               });
+              
+              // Call hook
+              if (hooks.onGroupChatJoin) {
+                await hooks.onGroupChatJoin({
+                  groupChatId: groupChat.id,
+                  userId: memberId,
+                  addedBy: userId,
+                });
+              }
             }
           }
+        }
+
+        // Call hook for group creation
+        if (hooks.onGroupChatCreate) {
+          await hooks.onGroupChatCreate({
+            groupChatId: groupChat.id,
+            createdById: userId,
+            name: name,
+          });
         }
 
         return ctx.json({ groupChat });
@@ -642,6 +808,21 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
           throw new APIError('BAD_REQUEST', { message: 'User is already a member of this group' });
         }
 
+        // Check max group size
+        const maxSize = await getMaxGroupSize();
+        if (maxSize !== undefined) {
+          const currentMembers = await adapter.findMany<GroupChatMember>({
+            model: 'group_chat_member',
+            where: [{ field: 'groupChatId', value: groupChatId }]
+          });
+          
+          if (currentMembers.length >= maxSize) {
+            throw new APIError('BAD_REQUEST', { 
+              message: `Group has reached maximum size of ${maxSize} members` 
+            });
+          }
+        }
+
         await adapter.create<GroupChatMember>({
           model: 'group_chat_member',
           data: {
@@ -651,6 +832,15 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
             joinedAt: new Date(),
           }
         });
+
+        // Call hook
+        if (hooks.onGroupChatJoin) {
+          await hooks.onGroupChatJoin({
+            groupChatId: groupChatId,
+            userId: newMemberId,
+            addedBy: userId,
+          });
+        }
 
         return ctx.json({ success: true });
       }),
@@ -704,6 +894,15 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
             { field: 'userId', value: memberIdToRemove }
           ]
         });
+
+        // Call hook
+        if (hooks.onGroupChatLeave) {
+          await hooks.onGroupChatLeave({
+            groupChatId: groupChatId,
+            userId: memberIdToRemove,
+            removedBy: userId,
+          });
+        }
 
         return ctx.json({ success: true });
       }),
@@ -798,6 +997,16 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
             updatedAt: new Date(),
           }
         });
+
+        // Call hook
+        if (hooks.onGroupChatMessageSend) {
+          await hooks.onGroupChatMessageSend({
+            messageId: message.id,
+            groupChatId: groupChatId,
+            senderId: userId,
+            content: content,
+          });
+        }
 
         return ctx.json({ message });
       }),
