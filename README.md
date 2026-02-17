@@ -1,6 +1,16 @@
 # Better Auth Social Network Plugin
 
-Un plugin Better Auth pour les réseaux sociaux qui permet la gestion des amis, des demandes d'amis, des chats privés et des groupes de chat.
+Better-auth Plugin to add social network to your app, this include **friends, friends request, group chat, and private account**.
+
+**75% Done.**
+- [X] Friends
+- [X] Friends Request
+- [X] Chat
+- [X] Group Chat
+- [X] Private Account
+- [X] Feed
+- [ ] Post
+- [ ] Commentary
 
 ## Installation
 
@@ -10,24 +20,24 @@ npm install better-auth-social
 
 ## Fonctionnalités
 
-- ✅ **Gestion des amis** : Envoyer, accepter, refuser et supprimer des amis
-- ✅ **Demandes d'amis** : Système complet de demandes d'amis avec statuts
-- ✅ **Chats privés** : Conversations en tête-à-tête entre amis
-- ✅ **Groupes de chat** : Créer et gérer des groupes de discussion avec plusieurs membres
-- ✅ **Messages** : Envoyer et recevoir des messages dans les chats et groupes
+- ✅ **Friends** : List, Filter and Delete
+- ✅ **Friend Requests** : Send, List (sent), List (received), Accept or Deny
+- ✅ **Private Chat** : 1 to 1 Conversation with a Friend
+- ✅ **GroupChat** : Create, Invite and Join
+- ✅ **Messages** : Send Message in Chat or GroupChat, Delete, Quote
 
 ## Configuration
 
-### Schéma de base de données
+### Database Schema
 
-Le plugin ajoute automatiquement les tables suivantes à votre schéma Better Auth :
+Plugins automatically add thoses tables to your Database
 
-- `friend_request` - Demandes d'amis
-- `friend` - Relations d'amitié
-- `chat` - Chats privés entre deux utilisateurs
-- `group_chat` - Groupes de chat
-- `group_chat_member` - Membres des groupes
-- `message` - Messages dans les chats et groupes
+- `friend_request` - Friends Request
+- `friend` - Friends
+- `chat` - Private Chat between 2 Friends / User (depends on config)
+- `group_chat` - Group Chat
+- `group_chat_member` - Group Chat Member
+- `message` - Messages in Group Chat and Private Chat
 
 ### Setup
 
@@ -36,14 +46,14 @@ import { socialNetwork } from "better-auth-social";
 import { betterAuth } from "better-auth";
 
 const auth = betterAuth({
-  // ... votre configuration
+  // ...config
   plugins: [
     socialNetwork({
-      allowSelfFriendRequest: false, // Par défaut: false
-      maxGroupSize: 50, // Taille maximale des groupes (optionnel)
+      allowSelfFriendRequest: false, // Default: false
+      maxGroupSize: 50, // (optionnal)
       // ou une fonction async
       maxGroupSize: async () => {
-        // Logique dynamique pour déterminer la taille maximale
+        // Dynamically return the maximum size
         return 100;
       },
       hooks: {
@@ -56,7 +66,7 @@ const auth = betterAuth({
         onGroupChatJoin: async (data) => {
           console.log("User joined group:", data);
         },
-        // ... autres hooks
+        // ... others hooks
       },
     }),
   ],
@@ -67,145 +77,185 @@ const auth = betterAuth({
 
 #### `allowSelfFriendRequest`
 - **Type**: `boolean`
-- **Défaut**: `false`
-- **Description**: Permet aux utilisateurs d'envoyer des demandes d'amis à eux-mêmes.
+- **Default**: `false`
+- **Description**: Allow Users to send friend request to themselves (usefull for testing)
 
 #### `maxGroupSize`
 - **Type**: `number | (() => Promise<number>)`
-- **Défaut**: `undefined` (pas de limite)
-- **Description**: Taille maximale des membres dans un groupe de chat. Peut être un nombre strict ou une fonction async qui retourne un nombre.
+- **Default**: `10`
+- **Description**: Maximum size of group chat, can be dynamically retrieved.
+
+### `allowMultipleChatWithSameFriend`
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Allow creation of chat with the same friend.
+
+### `allowMultipleGroupChatWithSameFriends`
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Allow creation of group chat with same friends.
+
+#### `messageDeletionStatus`
+- **Type**: `enum: CANT_DELETE, SENDER_ONLY_VISIBLE, VISIBLE`
+- **Default**: `VISIBLE`
+- **Description**: State the rule of message deleting.
+  - **CANT_DELETE**: User can't delete their messages.
+  - **SENDER_ONLY_VISIBLE**: Only the sender will see the deleted message.
+  - **VISIBLE**: Everyone will see that a message has been deleted.
+ 
+#### `deletedMessageText`
+- **Type**: `string | (() => Promise<string>)`
+- **Default**: `Message has been deleted`
+- **Description**: Message shown over deleted messages.
 
 #### `hooks`
 - **Type**: `SocialNetworkHooks`
-- **Description**: Hooks pour intercepter les événements du réseau social.
+- **Description**: Social Network Event Hooks.
 
-### Hooks disponibles
+### Hooks Lists
 
-Tous les hooks sont optionnels et peuvent être des fonctions async ou synchrones :
+Every Hooks are optionnal and can be called with async function :
 
-- **`onFriendRequestSend`** : Appelé lorsqu'une demande d'ami est envoyée
+- **`onFriendRequestSend`** : Called whenever a friend request is **sent**
   ```typescript
   onFriendRequestSend?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
   ```
 
-- **`onFriendRequestAccept`** : Appelé lorsqu'une demande d'ami est acceptée
+- **`onFriendRequestAccept`** : Called whenever a friend request is **accepted**
   ```typescript
   onFriendRequestAccept?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
   ```
 
-- **`onFriendRequestReject`** : Appelé lorsqu'une demande d'ami est refusée
+- **`onFriendRequestReject`** : Called whenever a friend request is **refused**
   ```typescript
   onFriendRequestReject?: (data: { senderId: string; receiverId: string; requestId: string }) => Promise<void> | void;
   ```
 
-- **`onFriendRemove`** : Appelé lorsqu'un ami est supprimé
+- **`onFriendRemove`** : Called whenever a friend is **remove**
   ```typescript
   onFriendRemove?: (data: { userId: string; friendId: string }) => Promise<void> | void;
   ```
 
-- **`onChatCreate`** : Appelé lorsqu'un chat privé est créé
+- **`onChatCreate`** : Called whenever a chat is **created**
   ```typescript
   onChatCreate?: (data: { chatId: string; user1Id: string; user2Id: string }) => Promise<void> | void;
   ```
 
-- **`onChatMessageSend`** : Appelé lorsqu'un message est envoyé dans un chat privé
+- **`onChatMessageSend`** : Called whenever a chat message is **sent**
   ```typescript
   onChatMessageSend?: (data: { messageId: string; chatId: string; senderId: string; content: string }) => Promise<void> | void;
   ```
 
-- **`onGroupChatCreate`** : Appelé lorsqu'un groupe de chat est créé
+- **`onGroupChatCreate`** : Called whenever a group chat is **created**
   ```typescript
   onGroupChatCreate?: (data: { groupChatId: string; createdById: string; name: string }) => Promise<void> | void;
   ```
 
-- **`onGroupChatJoin`** : Appelé lorsqu'un utilisateur rejoint un groupe
+- **`onGroupChatJoin`** : Called whenever a user **join** a group chat
   ```typescript
   onGroupChatJoin?: (data: { groupChatId: string; userId: string; addedBy?: string }) => Promise<void> | void;
   ```
 
-- **`onGroupChatLeave`** : Appelé lorsqu'un utilisateur quitte ou est retiré d'un groupe
+- **`onGroupChatLeave`** : Called whenever a user **leave** a group chat
   ```typescript
   onGroupChatLeave?: (data: { groupChatId: string; userId: string; removedBy?: string }) => Promise<void> | void;
   ```
 
-- **`onGroupChatMessageSend`** : Appelé lorsqu'un message est envoyé dans un groupe
+- **`onGroupChatMessageSend`** : Called whenever a message is **sent** in a group chat
   ```typescript
   onGroupChatMessageSend?: (data: { messageId: string; groupChatId: string; senderId: string; content: string }) => Promise<void> | void;
   ```
 
 ## API Routes
 
-### Demandes d'amis
+### Friends Requests
 
-#### Envoyer une demande d'ami
+#### Send a Friend Request
 ```typescript
 POST /api/auth/social/friend-request/send
 Body: { receiverId: string }
 ```
 
-#### Accepter une demande d'ami
+#### Accept a Friend Request
 ```typescript
 POST /api/auth/social/friend-request/accept
 Body: { requestId: string }
 ```
 
-#### Refuser une demande d'ami
+#### Reject a Friend Request
 ```typescript
 POST /api/auth/social/friend-request/reject
 Body: { requestId: string }
 ```
 
-#### Lister les demandes d'amis
+#### List all Friend Request sent
 ```typescript
-GET /api/auth/social/friend-request/list
-Response: { sent: FriendRequest[], received: FriendRequest[] }
+GET /api/auth/social/friend-request/sent/list
+Response: { sent: FriendRequest[] }
 ```
 
-### Amis
+#### List all Friend Request Received
+```typescript
+GET /api/auth/social/friend-request/received/list
+Response: { received: FriendRequest[] }
+```
 
-#### Lister les amis
+### Friends
+
+#### List Friends
 ```typescript
 GET /api/auth/social/friends/list
 Response: { friends: Friend[] }
 ```
 
-#### Supprimer un ami
+#### Remove a Friend
 ```typescript
 POST /api/auth/social/friends/remove
 Body: { friendId: string }
 ```
 
-### Chats privés
+#### Is user a Friend
+```typescript
+GET /api/auth/social/friends/isfriend
+Response: { isFriend: boolean }
+```
 
-#### Créer un chat
+### Chat
+
+#### Create a chat
 ```typescript
 POST /api/auth/social/chat/create
 Body: { friendId: string }
 Response: { chat: Chat }
 ```
 
-#### Lister les chats
+#### List all chats
 ```typescript
 GET /api/auth/social/chat/list
 Response: { chats: Chat[] }
 ```
 
-#### Obtenir les messages d'un chat
+#### Get Messages From a Chat
 ```typescript
 GET /api/auth/social/chat/messages?chatId=xxx
+Params {
+  chatId: string
+  page: number
+  limit: number
+}
 Response: { messages: Message[] }
 ```
 
-#### Envoyer un message dans un chat
+#### Send Message in a Chat
 ```typescript
 POST /api/auth/social/chat/send-message
 Body: { chatId: string, content: string }
 Response: { message: Message }
 ```
 
-### Groupes de chat
+### Group Chat
 
-#### Créer un groupe
+#### Create a Group Chat
 ```typescript
 POST /api/auth/social/group-chat/create
 Body: { 
@@ -216,31 +266,31 @@ Body: {
 Response: { groupChat: GroupChat }
 ```
 
-#### Lister les groupes
+#### List all Group Chat
 ```typescript
 GET /api/auth/social/group-chat/list
 Response: { groupChats: GroupChat[] }
 ```
 
-#### Ajouter un membre
+#### Add Member to Group Chat
 ```typescript
 POST /api/auth/social/group-chat/add-member
 Body: { groupChatId: string, userId: string }
 ```
 
-#### Retirer un membre
+#### Remove Member from a Group Chat
 ```typescript
 POST /api/auth/social/group-chat/remove-member
 Body: { groupChatId: string, userId: string }
 ```
 
-#### Obtenir les messages d'un groupe
+#### Get Messages From a Group Chat
 ```typescript
 GET /api/auth/social/group-chat/messages?groupChatId=xxx
 Response: { messages: Message[] }
 ```
 
-#### Envoyer un message dans un groupe
+#### Send a Message in a Group Chat
 ```typescript
 POST /api/auth/social/group-chat/send-message
 Body: { groupChatId: string, content: string }
@@ -250,7 +300,7 @@ Response: { message: Message }
 ## Types TypeScript
 
 ```typescript
-export interface FriendRequest {
+export type FriendRequest = {
   id: string;
   senderId: string;
   receiverId: string;
@@ -259,14 +309,14 @@ export interface FriendRequest {
   updatedAt: Date;
 }
 
-export interface Friend {
+export type Friend = {
   id: string;
   userId: string;
   friendId: string;
   createdAt: Date;
 }
 
-export interface Chat {
+export type Chat = {
   id: string;
   user1Id: string;
   user2Id: string;
@@ -274,7 +324,7 @@ export interface Chat {
   updatedAt: Date;
 }
 
-export interface GroupChat {
+export type GroupChat = {
   id: string;
   name: string;
   description: string | null;
@@ -283,7 +333,7 @@ export interface GroupChat {
   updatedAt: Date;
 }
 
-export interface Message {
+export type Message = {
   id: string;
   content: string;
   senderId: string;
@@ -294,15 +344,16 @@ export interface Message {
 }
 ```
 
-## Exemple d'utilisation
+## Exemple
 
 ```typescript
+// auth.ts
 import { socialNetwork } from "better-auth-social";
 import { betterAuth } from "better-auth";
 
 const auth = betterAuth({
   database: {
-    // votre adaptateur de base de données
+    // your adapter
   },
   plugins: [
     socialNetwork({
@@ -311,7 +362,7 @@ const auth = betterAuth({
   ],
 });
 
-// Utilisation côté client
+// auth-client.ts
 import { socialNetworkClient } from "better-auth-social/client";
 import { createAuthClient } from "better-auth/client";
 
@@ -320,31 +371,29 @@ const client = createAuthClient({
   plugins: [socialNetworkClient()],
 });
 
-// Envoyer une demande d'ami
+
+
+// Send a Friend Request
 await client.fetch("/social/friend-request/send", {
   method: "POST",
   body: { receiverId: "user-id" },
 });
 
-// Accepter une demande
+// Accept it
 await client.fetch("/social/friend-request/accept", {
   method: "POST",
   body: { requestId: "request-id" },
 });
 
-// Créer un chat
+// Make a Chat with the new Friend
 const { chat } = await client.fetch("/social/chat/create", {
   method: "POST",
   body: { friendId: "friend-id" },
 });
 
-// Envoyer un message
+// Send a Message in the Chat
 await client.fetch("/social/chat/send-message", {
   method: "POST",
   body: { chatId: chat.id, content: "Hello!" },
 });
 ```
-
-## Licence
-
-MIT
