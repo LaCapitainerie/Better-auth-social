@@ -1,0 +1,68 @@
+import { z } from "better-auth";
+
+export const FriendRequest = z.object({
+  id: z.string(),
+  senderId: z.string(),
+  receiverId: z.string(),
+  status: z.enum(['pending', 'accepted', 'rejected']),
+});
+
+export type FriendRequest = z.infer<typeof FriendRequest>;
+
+export const Friend = z.object({
+  id: z.string(),
+  userId: z.string(),
+  friendId: z.string(),
+});
+
+export type Friend = z.infer<typeof Friend>;
+
+export const Chat = z.object({
+  id: z.string(),
+
+  user1Id: z.string(),
+  user2Id: z.string(),
+});
+
+export type Chat = z.infer<typeof Chat>;
+
+export const GroupChat = z.object({
+  id: z.string(),
+
+  name: z.string(),
+  description: z.string().nullable(),
+  createdById: z.string(),
+});
+
+export type GroupChat = z.infer<typeof GroupChat>;
+
+export const GroupChatMember = z.object({
+  id: z.string(),
+
+  groupChatId: z.string(),
+  userId: z.string(),
+  role: z.enum(['admin', 'member']),
+  joinedAt: z.date(),
+});
+
+export type GroupChatMember = z.infer<typeof GroupChatMember>;
+
+export const ChatMessage = z.object({
+  id: z.string(),
+
+  content: z.string(),
+  senderId: z.string(),
+  chatId: z.string(),
+});
+
+export type ChatMessage = z.infer<typeof ChatMessage>;
+
+export const GroupChatMessage = z.object({
+  id: z.string(),
+
+  content: z.string(),
+  senderId: z.string(),
+  groupChatId: z.string(),
+});
+
+export type GroupChatMessage = z.infer<typeof GroupChatMessage>;

@@ -23,12 +23,22 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "build": "next build --turbo",
+    "type:generate": "next typegen .",
+    "clean": "next lint --fix && tsc --noEmit && prettier --write .",
+    "dev": "next dev --turbopack",
+    "format": "prettier --write .",
+    "knip": "knip-bun --config knip.json",
+    "lint": "eslint . --fix",
+    "start": "next start",
+    "ts": "tsc --noEmit",
+    "test": "vitest",
+    "test:ci": "vitest run",
+    "lint:ci": "eslint ."
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LuyxLLC/better-auth-university.git"
+    "url": "git+https://github.com/LaCapitainerie/Better-auth-social.git"
   },
   "keywords": [
     "better-auth",
@@ -42,13 +52,16 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/LuyxLLC/better-auth-university/issues"
+    "url": "https://github.com/LaCapitainerie/Better-auth-social/issues"
   },
-  "homepage": "https://github.com/LuyxLLC/better-auth-university#readme",
+  "homepage": "https://github.com/LaCapitainerie/Better-auth-social#readme",
   "peerDependencies": {
     "better-auth": "^1.4.6"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "vitest": "^4.0.18"
   }
 }
