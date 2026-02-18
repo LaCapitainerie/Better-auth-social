@@ -18,7 +18,7 @@ Better-auth Plugin to add social network to your app, this include **friends, fr
 npm install better-auth-social
 ```
 
-## Fonctionnalités
+## Functionnalities
 
 - ✅ **Friends** : List, Filter and Delete
 - ✅ **Friend Requests** : Send, List (sent), List (received), Accept or Deny
@@ -51,7 +51,7 @@ const auth = betterAuth({
     socialNetwork({
       allowSelfFriendRequest: false, // Default: false
       maxGroupSize: 50, // (optionnal)
-      // ou une fonction async
+      // or an async function
       maxGroupSize: async () => {
         // Dynamically return the maximum size
         return 100;
@@ -85,12 +85,12 @@ const auth = betterAuth({
 - **Default**: `10`
 - **Description**: Maximum size of group chat, can be dynamically retrieved.
 
-### `allowMultipleChatWithSameFriend`
+#### `allowMultipleChatWithSameFriend`
 - **Type**: `boolean`
 - **Default**: `false`
 - **Description**: Allow creation of chat with the same friend.
 
-### `allowMultipleGroupChatWithSameFriends`
+#### `allowMultipleGroupChatWithSameFriends`
 - **Type**: `boolean`
 - **Default**: `false`
 - **Description**: Allow creation of group chat with same friends.
@@ -103,10 +103,10 @@ const auth = betterAuth({
   - **SENDER_ONLY_VISIBLE**: Only the sender will see the deleted message.
   - **VISIBLE**: Everyone will see that a message has been deleted.
  
-#### `deletedMessageText`
+#### `deletedMessagePlaceholder`
 - **Type**: `string | (() => Promise<string>)`
 - **Default**: `Message has been deleted`
-- **Description**: Message shown over deleted messages.
+- **Description**: Placeholder shown over deleted messages.
 
 #### `hooks`
 - **Type**: `SocialNetworkHooks`
