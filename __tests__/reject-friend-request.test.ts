@@ -54,7 +54,7 @@ describe("API - Reject Friend Request", async () => {
       const body = await response.json();
       expect(body.success).toBe(true);
 
-      const { received } = await auth.api.listFriendRequestsReceived({
+      const { received } = await auth.api.getFriendRequestsReceived({
         query: {
           status: 'rejected',
         },
@@ -87,7 +87,7 @@ describe("API - Reject Friend Request", async () => {
       });
       expect(acceptFriendRequestSuccess).toBe(true);
 
-      const { received } = await auth.api.listFriendRequestsReceived({
+      const { received } = await auth.api.getFriendRequestsReceived({
         query: {
           status: 'accepted',
         },

@@ -64,7 +64,7 @@ describe("API - Send Friend Request", async () => {
 
     it("should raise an error if users are already friends", async () => {
 
-      const receivedRequests = await auth.api.listFriendRequestsReceived({
+      const receivedRequests = await auth.api.getFriendRequestsReceived({
         query: {
           status: 'pending'
         },
@@ -85,7 +85,7 @@ describe("API - Send Friend Request", async () => {
 
       expect(acceptedRequest.success).toBe(true);
 
-      const friendRequests = await auth.api.listFriendRequestsReceived({
+      const friendRequests = await auth.api.getFriendRequestsReceived({
         query: {
           status: 'pending'
         },
