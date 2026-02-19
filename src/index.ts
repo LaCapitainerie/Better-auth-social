@@ -139,7 +139,6 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             where: [{ field: 'id', value: requestId }],
             update: {
               status: 'accepted',
-              updatedAt: new Date(),
             }
           });
 
@@ -306,6 +305,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           friends: z.array(Friend),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { page, limit } = ctx.query;
         const userId = ctx.context.session?.user.id;
@@ -333,6 +333,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           success: z.boolean(),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { friendId } = ctx.body;
         const userId = ctx.context.session?.user.id;
@@ -382,6 +383,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           isFriend: z.boolean(),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { friendId } = ctx.query;
         const userId = ctx.context.session?.user.id;
