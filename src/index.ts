@@ -1,13 +1,14 @@
 import { mergeSchema } from 'better-auth/db';
-import { BetterAuthPlugin, z } from 'better-auth';
-import { APIError, createAuthEndpoint } from 'better-auth/api';
+import { BetterAuthPlugin } from 'better-auth';
+import { APIError, createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
+import { z } from 'zod';
 
 import { getSchema } from './schema.js';
 import { ERROR_CODES } from './error.js';
 import type { SocialNetworkOptions } from './options.js';
 import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage } from './types.js';
 
-export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin => {
+export const socialNetwork = (options?: SocialNetworkOptions) => {
   const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
   const hooks = options?.hooks || {};
 
@@ -34,10 +35,13 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
         response: z.object({
           friendRequest: FriendRequest,
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
 
         const { receiverId } = ctx.body;
         const userId = ctx.context.session?.user.id;
+
+        console.log('session', ctx.context);
 
         if (!userId) {
           throw new APIError('UNAUTHORIZED', { message: ERROR_CODES.UNAUTHORIZED });
@@ -46,15 +50,20 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
         if (!allowSelfFriendRequest && receiverId === userId) {
           throw new APIError('BAD_REQUEST', { message: ERROR_CODES.FRIEND_REQUEST.SELF_REQUEST_NOT_ALLOWED });
         }
-
         const adapter = ctx.context.adapter;
+        const internalAdapter = ctx.context.internalAdapter;
+
+        const foreignUser = await internalAdapter.findUserById(receiverId);
+        if (!foreignUser) {
+          throw new APIError('NOT_FOUND', { message: ERROR_CODES.NOT_FOUND });
+        }
 
         // Check if users are already friends
         const existingFriend = await adapter.findOne<Friend>({
           model: 'friend',
           where: [
             { field: 'userId', value: userId },
-            { field: 'friendId', value: receiverId }
+            { field: 'friendId', value: foreignUser.id }
           ]
         });
 
@@ -67,7 +76,7 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
           model: 'friend_request',
           where: [
             { field: 'senderId', value: userId },
-            { field: 'receiverId', value: receiverId },
+            { field: 'receiverId', value: foreignUser.id },
             { field: 'status', value: 'pending' }
           ]
         });
@@ -80,7 +89,7 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
           model: 'friend_request',
           data: {
             senderId: userId,
-            receiverId: receiverId,
+            receiverId: foreignUser.id,
             status: 'pending',
           }
         });
@@ -955,5 +964,5 @@ export const socialNetwork = (options?: SocialNetworkOptions): BetterAuthPlugin 
         return ctx.json({ message });
       }),
     },
-  };
+  } satisfies BetterAuthPlugin;
 };
