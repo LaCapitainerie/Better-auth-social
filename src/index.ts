@@ -1,5 +1,5 @@
-import { mergeSchema, User } from 'better-auth/db';
-import { BetterAuthPlugin } from 'better-auth';
+import { mergeSchema } from 'better-auth/db';
+import { BetterAuthPlugin, Where } from 'better-auth';
 import { APIError, createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
 import { z } from 'zod';
 
@@ -22,6 +22,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
     }
     return await options.maxGroupSize();
   };
+
+  const zResponseSuccess = z.object({
+    success: z.boolean(),
+  });
 
   return {
     id: 'social-network',
@@ -102,9 +106,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         body: z.object({
           requestId: z.string(),
         }),
-        response: z.object({
-          success: z.boolean(),
-        }),
+        response: zResponseSuccess,
         use: [sessionMiddleware],
       }, async (ctx) => {
         const { requestId } = ctx.body;
@@ -178,9 +180,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         body: z.object({
           requestId: z.string(),
         }),
-        response: z.object({
-          success: z.boolean(),
-        }),
+        response: zResponseSuccess,
         use: [sessionMiddleware],
       }, async (ctx) => {
         const { requestId } = ctx.body;
@@ -232,16 +232,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ success: true });
       }),
-      listFriendRequestsSent: createAuthEndpoint('/social/friend-request/sent/list', {
+      getFriendRequestsSent: createAuthEndpoint('/social/friend-request/sent/list', {
         method: "GET",
         query: z.object({
           page: z.number().optional().default(1),
           limit: z.number().optional().default(10),
-          status: z.enum(['pending', 'accepted', 'rejected']).optional().default('pending'),
-        }).optional().default({ page: 1, limit: 10, status: 'pending' }),
-        response: z.object({
-          sent: z.array(FriendRequest),
-        }),
+          status: z.enum(['pending', 'accepted', 'rejected']).nullable(),
+        }).optional().default({ page: 1, limit: 10, status: null }),
+        response: z.object({ sent: z.array(FriendRequest) }),
         use: [sessionMiddleware],
       }, async (ctx) => {
         const { page, limit, status } = ctx.query;
@@ -253,9 +251,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         const adapter = ctx.context.adapter;
 
+        const where: Where[] = [{ field: 'senderId', value: userId }];
+        if (status) {
+          where.push({ field: 'status', value: status });
+        }
+
         const sentRequests = await adapter.findMany<FriendRequest>({
           model: 'friend_request',
-          where: [{ field: 'senderId', value: userId }, { field: 'status', value: status }],
+          where,
           limit: limit,
           offset: (page - 1) * (limit),
         });
@@ -291,6 +294,29 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         return ctx.json({ received: receivedRequests });
+      }),
+      rejectAllFriendRequests: createAuthEndpoint('/social/friend-request/reject-all', {
+        method: "POST",
+        response: zResponseSuccess,
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const userId = ctx.context.session?.user.id;
+        
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const updatedRequests = await adapter.updateMany({
+          model: 'friend_request',
+          where: [{ field: 'receiverId', value: userId }, { field: 'status', value: 'pending' }],
+          update: {
+            status: 'rejected',
+          }
+        });
+
+        return ctx.json({ success: true });
       }),
 
 
