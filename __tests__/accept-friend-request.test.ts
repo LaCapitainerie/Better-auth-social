@@ -65,7 +65,7 @@ describe("API - Accept Friend Request", async () => {
 
     it("should raise an error if the friend request is already accepted", async () => {
 
-      const { received } = await auth.api.listFriendRequestsReceived({
+      const { received } = await auth.api.getFriendRequestsReceived({
         query: {
           status: 'accepted',
         },

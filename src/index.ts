@@ -265,16 +265,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ sent: sentRequests });
       }),
-      listFriendRequestsReceived: createAuthEndpoint('/social/friend-request/received/list', {
+      getFriendRequestsReceived: createAuthEndpoint('/social/friend-request/received/list', {
         method: "GET",
         query: z.object({
           page: z.number().optional().default(1),
           limit: z.number().optional().default(10),
-          status: z.enum(['pending', 'accepted', 'rejected']).optional().default('pending'),
-        }).optional().default({ page: 1, limit: 10, status: 'pending' }),
-        response: z.object({
-          received: z.array(FriendRequest),
-        }),
+          status: z.enum(['pending', 'accepted', 'rejected']).nullable(),
+        }).optional().default({ page: 1, limit: 10, status: null }),
+        response: z.object({ received: z.array(FriendRequest) }),
         use: [sessionMiddleware],
       }, async (ctx) => {
         const { page, limit, status } = ctx.query;
@@ -286,9 +284,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         const adapter = ctx.context.adapter;
 
+        const where: Where[] = [{ field: 'receiverId', value: userId }];
+        if (status) {
+          where.push({ field: 'status', value: status });
+        }
+
         const receivedRequests = await adapter.findMany<FriendRequest>({
           model: 'friend_request',
-          where: [{ field: 'receiverId', value: userId }, { field: 'status', value: status }],
+          where,
           limit: limit,
           offset: (page - 1) * (limit),
         });
