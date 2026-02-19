@@ -215,7 +215,6 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             where: [{ field: 'id', value: requestId }],
             update: {
               status: 'rejected',
-              updatedAt: new Date(),
             }
           });
 
