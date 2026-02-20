@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { socialNetwork } from "../../src/index.ts";
-import { socialNetworkClient } from "../../src/client.ts";
+import { socialNetwork } from "../../../src/index.ts";
+import { socialNetworkClient } from "../../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
-import { ERROR_MESSAGES, errorMessageToCode } from "../../src/error.ts";
+import { ERROR_MESSAGES, errorMessageToCode } from "../../../src/error.ts";
 
 describe("API - Send Friend Request", async () => {
   const { auth, signInWithTestUser } = await getTestInstance({
