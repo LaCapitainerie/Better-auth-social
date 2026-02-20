@@ -146,6 +146,11 @@ Every Hooks are optionnal and can be called with async function :
   onChatMessageSend?: (data: { messageId: string; chatId: string; senderId: string; content: string }) => Promise<void> | void;
   ```
 
+- **`onChatMessageDelete`** : Called whenever a chat message is **deleted**
+  ```typescript
+  onChatMessageDelete?: (data: { messageId: string; chatId: string; senderId: string; content: string }) => Promise<void> | void;
+  ```
+
 - **`onGroupChatCreate`** : Called whenever a group chat is **created**
   ```typescript
   onGroupChatCreate?: (data: { groupChatId: string; createdById: string; name: string }) => Promise<void> | void;

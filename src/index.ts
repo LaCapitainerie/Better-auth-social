@@ -602,10 +602,18 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         const messages = await adapter.findMany<ChatMessage>({
           model: 'chat_message',
-          where: [{ field: 'chatId', value: chatId }],
+          where: [
+            {
+              field: 'chatId',
+              value: chatId,
+              operator: 'eq',
+              connector: 'AND'
+            },
+          ],
           limit: limit,
           offset: (page - 1) * (limit),
-        });
+        }).then(messages => messages.filter(message => message.deletedAt === null));
+        // TODO: Find a way to filter deleted messages by using the default Adapter filter
 
         return ctx.json({ messages });
       }),
@@ -653,6 +661,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             content: content,
             senderId: userId,
             chatId: chatId,
+            deletedAt: null,
           }
         });
 
@@ -663,7 +672,52 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ message });
       }),
+      deleteChatMessage: createAuthEndpoint('/social/chat-messages/delete', {
+        method: "POST",
+        body: z.object({
+          chatMessageId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { chatMessageId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
 
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+        const chatMessage = await adapter.findOne<ChatMessage>({
+          model: 'chat_message',
+          where: [{ field: 'id', value: chatMessageId, connector: 'AND' }]
+        });
+
+        if (!chatMessage || chatMessage.deletedAt !== null) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        if (chatMessage.senderId !== userId) {
+          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
+        await adapter.update({
+          model: 'chat_message',
+          where: [{ field: 'id', value: chatMessageId }],
+          update: {
+            deletedAt: new Date(),
+          }
+        });
+
+        // Call hook
+        if (hooks.onChatMessageDelete) {
+          await hooks.onChatMessageDelete(chatMessage);
+        }
+
+        return ctx.json({ success: true });
+      }),
 
 
       createGroupChat: createAuthEndpoint('/social/group-chat/create', {

@@ -32,6 +32,11 @@ export type SocialNetworkHooks = {
   onChatMessageSend?: (data: ChatMessage) => Promise<void> | void;
 
   /**
+   * Called when a chat message is deleted
+   */
+  onChatMessageDelete?: (data: ChatMessage) => Promise<void> | void;
+
+  /**
    * Called when a group chat is created
    */
   onGroupChatCreate?: (data: GroupChat) => Promise<void> | void;
