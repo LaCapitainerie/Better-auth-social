@@ -843,7 +843,56 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ groupChats });
       }),
+      leaveGroupChat: createAuthEndpoint('/social/group-chat/leave', {
+        method: "POST",
+        body: z.object({
+          groupChatId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { groupChatId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
 
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        if (groupChatId === undefined) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const membership = await adapter.findOne<GroupChatMember>({
+          model: 'group_chat_member',
+          where: [
+            { field: 'groupChatId', value: groupChatId },
+            { field: 'userId', value: userId }
+          ]
+        });
+        
+        if (!membership) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        await adapter.delete({
+          model: 'group_chat_member',
+          where: [
+            { field: 'groupChatId', value: groupChatId },
+            { field: 'userId', value: userId }
+          ]
+        });
+
+        // Call hook
+        if (hooks.onGroupChatLeave) {
+          await hooks.onGroupChatLeave();
+        }
+
+        return ctx.json({ success: true });
+      }),
 
 
       addGroupChatMember: createAuthEndpoint('/social/group-chat/add-member', {
@@ -985,7 +1034,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         // Call hook
         if (hooks.onGroupChatLeave) {
-          await hooks.onGroupChatLeave(groupChat);
+          await hooks.onGroupChatLeave();
         }
 
         return ctx.json({ success: true });
