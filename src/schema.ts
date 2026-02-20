@@ -176,6 +176,15 @@ export const getSchema = () => {
             field: "id",
           },
         },
+        /* membersIds: {
+          type: "string[]",
+          required: true,
+          returned: true,
+          references: {
+            model: "user",
+            field: "id",
+          },
+        }, */
         createdAt: {
           type: "date",
           required: true,
