@@ -49,7 +49,7 @@ export type SocialNetworkHooks = {
   /**
    * Called when a user leaves or is removed from a group chat
    */
-  onGroupChatLeave?: (data: GroupChat) => Promise<void> | void;
+  onGroupChatLeave?: () => Promise<void> | void;
 
   /**
    * Called when a message is sent in a group chat
