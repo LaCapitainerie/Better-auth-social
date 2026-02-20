@@ -107,6 +107,47 @@ export const getSchema = () => {
         },
       },
     },
+    chat_message: {
+      fields: {
+        content: {
+          type: "string",
+          required: true,
+          returned: true,
+        },
+        senderId: {
+          type: "string",
+          required: true,
+          returned: true,
+          references: {
+            model: "user",
+            field: "id",
+          },
+        },
+        chatId: {
+          type: "string",
+          required: false,
+          defaultValue: null,
+          returned: true,
+          references: {
+            model: "chat",
+            field: "id",
+          },
+        },
+        createdAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+        updatedAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+      },
+      
+    },
     group_chat: {
       fields: {
         name: {

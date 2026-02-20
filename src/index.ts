@@ -565,16 +565,17 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
 
 
-      getChatMessages: createAuthEndpoint('/social/chat/messages', {
+      getChatMessages: createAuthEndpoint('/social/chat-messages/list', {
         method: "GET",
         query: z.object({
           chatId: z.string(),
-          page: z.number().default(1),
-          limit: z.number().default(10),
+          page: z.number().optional().default(1),
+          limit: z.number().optional().default(10),
         }),
         response: z.object({
           messages: z.array(ChatMessage),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { chatId, page, limit } = ctx.query;
         const userId = ctx.context.session?.user.id;
@@ -608,7 +609,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ messages });
       }),
-      sendChatMessage: createAuthEndpoint('/social/chat/send-message', {
+      sendChatMessage: createAuthEndpoint('/social/chat-messages/send', {
         method: "POST",
         body: z.object({
           chatId: z.string(),
@@ -617,6 +618,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           message: ChatMessage,
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { chatId, content } = ctx.body;
         const userId = ctx.context.session?.user.id;
