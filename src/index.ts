@@ -430,6 +430,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         const adapter = ctx.context.adapter;
 
+        if (!friendId) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
+
         const isFriend = await adapter.findOne<Friend>({
           model: 'friend',
           where: [
