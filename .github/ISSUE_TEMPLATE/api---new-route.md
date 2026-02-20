@@ -13,7 +13,7 @@ Params :
 - `key : value`
 
 Response :
-- `key: value`
+- `key : value`
 
 ### Errors
 #### `UNAUTHORIZED: 'You must be logged in'`
