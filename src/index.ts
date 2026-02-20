@@ -49,6 +49,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
 
+        if (!allowSelfFriendRequest && userId === receiverId) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_REQUEST_NOT_ALLOWED });
+        }
+
         const { adapter, internalAdapter } = ctx.context;
 
         const foreignUser = await internalAdapter.findUserById(receiverId);

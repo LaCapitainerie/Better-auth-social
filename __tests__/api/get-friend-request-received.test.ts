@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { socialNetwork } from "../src/index.ts";
-import { socialNetworkClient } from "../src/client.ts";
+import { socialNetwork } from "../../src/index.ts";
+import { socialNetworkClient } from "../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
 
-describe("API - Get Friend Requests Sent", async () => {
+describe("API - Get Friend Requests Received", async () => {
   const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork()],
+    plugins: [socialNetwork({
+      allowSelfFriendRequest: true,
+    })],
   }, {
     clientOptions: {
       plugins: [socialNetworkClient()],
@@ -18,19 +20,19 @@ describe("API - Get Friend Requests Sent", async () => {
     describe("without any friend request", async () => {
 
       it("without any filter it should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           headers,
           asResponse: true,
         });
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by pending status should return an empty array", async () => {
 
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'pending',
           },
@@ -40,11 +42,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by accepted status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'accepted',
           },
@@ -54,11 +56,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by rejected status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'rejected',
           },
@@ -68,7 +70,7 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
     });
@@ -91,18 +93,18 @@ describe("API - Get Friend Requests Sent", async () => {
 
 
       it("without any filter it should return the pending friend request", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           headers,
           asResponse: true,
         });
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(1);
+        expect(body.received.length).toBe(1);
       });
 
       it("filtering request by pending status should return the pending friend request", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'pending',
           },
@@ -112,11 +114,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(1);
+        expect(body.received.length).toBe(1);
       });
 
       it("filtering request by accepted status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'accepted',
           },
@@ -126,11 +128,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by rejected status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'rejected',
           },
@@ -140,7 +142,7 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
     });
@@ -155,18 +157,18 @@ describe("API - Get Friend Requests Sent", async () => {
       });
 
       it("without any filter it should return the rejected friend request", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           headers,
           asResponse: true,
         });
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(1);
+        expect(body.received.length).toBe(1);
       });
 
       it("filtering request by pending status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'pending',
           },
@@ -176,11 +178,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by accepted status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'accepted',
           },
@@ -190,11 +192,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by rejected status should return the rejected friend request", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'rejected',
           },
@@ -204,7 +206,7 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(1);
+        expect(body.received.length).toBe(1);
       });
     });
 
@@ -233,7 +235,7 @@ describe("API - Get Friend Requests Sent", async () => {
       });
 
       it("without any filter it should return the accepted friend request", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           headers,
           asResponse: true,
         });
@@ -241,11 +243,11 @@ describe("API - Get Friend Requests Sent", async () => {
         const body = await response.json();
 
         // Accepted Request + Rejected Request From the Previous Test
-        expect(body.sent.length).toBe(2);
+        expect(body.received.length).toBe(2);
       });
 
       it("filtering request by pending status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'pending',
           },
@@ -255,11 +257,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(0);
+        expect(body.received.length).toBe(0);
       });
 
       it("filtering request by accepted status should return the accepted friend request", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'accepted',
           },
@@ -269,11 +271,11 @@ describe("API - Get Friend Requests Sent", async () => {
 
         const body = await response.json();
 
-        expect(body.sent.length).toBe(1);
+        expect(body.received.length).toBe(1);
       });
 
       it("filtering request by rejected status should return an empty array", async () => {
-        const response = await auth.api.getFriendRequestsSent({
+        const response = await auth.api.getFriendRequestsReceived({
           query: {
             status: 'rejected',
           },
@@ -284,7 +286,7 @@ describe("API - Get Friend Requests Sent", async () => {
         const body = await response.json();
 
         // Rejected Request From the Previous Test
-        expect(body.sent.length).toBe(1);
+        expect(body.received.length).toBe(1);
       });
     });
 
