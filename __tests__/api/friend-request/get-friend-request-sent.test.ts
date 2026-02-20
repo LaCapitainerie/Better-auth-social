@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { socialNetwork } from "../../src/index.ts";
-import { socialNetworkClient } from "../../src/client.ts";
+import { socialNetwork } from "../../../src/index.ts";
+import { socialNetworkClient } from "../../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
 
 describe("API - Get Friend Requests Sent", async () => {

@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { socialNetwork } from "../../src/index.ts";
-import { socialNetworkClient } from "../../src/client.ts";
+import { socialNetwork } from "../../../src/index.ts";
+import { socialNetworkClient } from "../../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
-import { ERROR_MESSAGES, errorMessageToCode } from "../../src/error.ts";
+import { ERROR_MESSAGES, errorMessageToCode } from "../../../src/error.ts";
 
-describe("API - Reject Friend Request", async () => {
+describe("API - Accept Friend Request", async () => {
   const { auth, signInWithTestUser } = await getTestInstance({
     plugins: [socialNetwork({
       allowSelfFriendRequest: true,
@@ -19,7 +19,7 @@ describe("API - Reject Friend Request", async () => {
   await runWithUser(async (headers) => {
 
     it("should raise an error if the friend request does not exist", async () => {
-      const response = await auth.api.rejectFriendRequest({
+      const response = await auth.api.acceptFriendRequest({
         body: {
           requestId: "non-existent-request-id",
         },
@@ -45,7 +45,7 @@ describe("API - Reject Friend Request", async () => {
       expect(friendRequest.receiverId).toBe(user.id);
       expect(friendRequest.status).toBe('pending');
 
-      const response = await auth.api.rejectFriendRequest({
+      const response = await auth.api.acceptFriendRequest({
         body: {
           requestId: friendRequest.id,
         },
@@ -56,38 +56,16 @@ describe("API - Reject Friend Request", async () => {
       const body = await response.json();
       expect(body.success).toBe(true);
 
-      const { received } = await auth.api.getFriendRequestsReceived({
+      const friend = await auth.api.isFriend({
         query: {
-          status: 'rejected',
+          friendId: user.id,
         },
         headers,
       });
-      expect(received.length).toBe(1);
-      expect(received[0].id).toBe(friendRequest.id);
-      expect(received[0].status).toBe('rejected');
+      expect(friend.isFriend).toBe(true);
     });
 
     it("should raise an error if the friend request is already accepted", async () => {
-
-      const { friendRequest } = await auth.api.sendFriendRequest({
-        body: {
-          receiverId: user.id,
-        },
-        headers,
-      });
-
-      expect(friendRequest).toBeDefined();
-      expect(friendRequest.senderId).toBe(user.id);
-      expect(friendRequest.receiverId).toBe(user.id);
-      expect(friendRequest.status).toBe('pending');
-
-      const { success: acceptFriendRequestSuccess } = await auth.api.acceptFriendRequest({
-        body: {
-          requestId: friendRequest.id,
-        },
-        headers,
-      });
-      expect(acceptFriendRequestSuccess).toBe(true);
 
       const { received } = await auth.api.getFriendRequestsReceived({
         query: {
@@ -97,10 +75,8 @@ describe("API - Reject Friend Request", async () => {
       });
 
       expect(received.length).toBe(1);
-      expect(received[0].id).toBe(friendRequest.id);
-      expect(received[0].status).toBe('accepted');
 
-      const response = await auth.api.rejectFriendRequest({
+      const response = await auth.api.acceptFriendRequest({
         body: {
           requestId: received[0].id,
         },
@@ -111,17 +87,18 @@ describe("API - Reject Friend Request", async () => {
       const body = await response.json();
       expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_PENDING));
       expect(body.message).toBe(ERROR_MESSAGES.NOT_PENDING);
+    });
 
+    it("should raise an error if the friend request is already rejected", async () => {
+      
       const { success: removeFriendSuccess } = await auth.api.removeFriend({
         body: {
           friendId: user.id,
         },
         headers,
       });
+      
       expect(removeFriendSuccess).toBe(true);
-    });
-
-    it("should raise an error if the friend request is already rejected", async () => {
 
       const { friendRequest } = await auth.api.sendFriendRequest({
         body: {
@@ -152,7 +129,7 @@ describe("API - Reject Friend Request", async () => {
       });
       expect(friend.isFriend).toBe(false);
 
-      const response = await auth.api.rejectFriendRequest({
+      const response = await auth.api.acceptFriendRequest({
         body: {
           requestId: friendRequest.id,
         },

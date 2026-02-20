@@ -161,6 +161,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             }
           });
 
+          if (allowSelfFriendRequest && friendRequest.senderId === friendRequest.receiverId) {
+            return updatedRequest;
+          }
+
           await tx.create<Friend>({
             model: 'friend',
             data: {
@@ -328,12 +332,12 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
 
 
-      listFriends: createAuthEndpoint('/social/friends/list', {
+      getFriends: createAuthEndpoint('/social/friends/list', {
         method: "GET",
         query: z.object({
-          page: z.number().default(1),
-          limit: z.number().default(10),
-        }),
+          page: z.number().optional().default(1),
+          limit: z.number().optional().default(10),
+        }).optional().default({ page: 1, limit: 10 }),
         response: z.object({
           friends: z.array(Friend),
         }),
