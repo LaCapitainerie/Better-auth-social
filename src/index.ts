@@ -378,9 +378,25 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
 
-        const adapter = ctx.context.adapter;
+        const { adapter, internalAdapter } = ctx.context;
+
+        const foreignUser = await internalAdapter.findUserById(friendId);
+        if (!foreignUser) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
 
         await adapter.transaction(async (tx) => {
+
+          const isFriend = await tx.findOne<Friend>({
+            model: 'friend',
+            where: [
+              { field: 'userId', value: userId },
+              { field: 'friendId', value: friendId }
+            ]
+          });
+          if (!isFriend) {
+            throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.NOT_FRIEND });
+          }
 
           // Remove both directions
           await tx.delete({
@@ -390,6 +406,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
               { field: 'friendId', value: friendId }
             ]
           });
+
+          if (allowSelfFriendRequest && userId === friendId) {
+            return;
+          }
 
           await tx.delete({
             model: 'friend',

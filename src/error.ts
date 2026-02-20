@@ -12,7 +12,7 @@ export enum ERROR_MESSAGES {
 
   FAILED_TO_UPDATE = 'Failed to update friend request',
 
-  NOT_FRIEND = 'Users are not friends',
+  NOT_FRIEND = 'You are not friends with this user',
 
   NOT_FRIENDS = 'Users must be friends to create a chat',
   ALREADY_EXISTS = 'Chat already exists',
