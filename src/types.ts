@@ -30,8 +30,9 @@ export const GroupChat = z.object({
   id: z.string(),
 
   name: z.string(),
-  description: z.string().nullable(),
+  description: z.string().nullable().optional().default(null),
   createdById: z.string(),
+  /* membersIds: z.array(z.string()), */
 });
 
 export type GroupChat = z.infer<typeof GroupChat>;

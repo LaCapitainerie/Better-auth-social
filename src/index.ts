@@ -730,6 +730,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           groupChat: GroupChat,
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { name, description, memberIds } = ctx.body;
         const userId = ctx.context.session?.user.id;
@@ -738,15 +739,18 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
 
-        const maxSize = await getMaxGroupSize();
+        if (!name) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
 
-        if (maxSize !== undefined && memberIds.length + 1 > maxSize) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.TOO_LARGE.replace('{maxSize}', maxSize.toString()) });
+        if (memberIds.length === 0) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
         }
 
         const adapter = ctx.context.adapter;
 
         const groupChat = await adapter.transaction(async (tx) => {
+          
           const groupChat = await tx.create<GroupChat>({
             model: 'group_chat',
             data: {
@@ -780,11 +784,16 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
                 role: 'member',
                 joinedAt: new Date(),
               }
+            }).catch((error) => {
+              throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
             });
           }));
 
           return groupChat;
-
+        }).catch((error) => {
+          console.log(error);
+          
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
         });
 
         if (hooks.onGroupChatJoin) {
