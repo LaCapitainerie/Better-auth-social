@@ -467,16 +467,17 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
 
 
-      createChat: createAuthEndpoint('/social/chat/create', {
-        method: "POST",
-        body: z.object({
+      getOrCreateChat: createAuthEndpoint('/social/chat/get-or-create', {
+        method: "GET",
+        query: z.object({
           friendId: z.string(),
         }),
         response: z.object({
           chat: Chat,
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
-        const { friendId } = ctx.body;
+        const { friendId } = ctx.query;
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
@@ -484,6 +485,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+
+        if (!friendId) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
 
         // Check if users are friends
         const isFriend = await adapter.findOne<Friend>({
@@ -502,19 +507,12 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const existingChat = await adapter.findOne<Chat>({
           model: 'chat',
           where: [
-            { field: 'user1Id', value: userId },
-            { field: 'user2Id', value: friendId }
-          ]
-        }) || await adapter.findOne<Chat>({
-          model: 'chat',
-          where: [
-            { field: 'user1Id', value: friendId },
-            { field: 'user2Id', value: userId }
+            { field: 'user1Id', value: [userId, friendId], operator: 'in' },
           ]
         });
 
         if (existingChat) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_EXISTS });
+          return ctx.json({ chat: existingChat });
         }
 
         const chat = await adapter.create<Chat>({
