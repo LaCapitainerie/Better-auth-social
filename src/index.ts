@@ -312,7 +312,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         use: [sessionMiddleware],
       }, async (ctx) => {
         const userId = ctx.context.session?.user.id;
-        
+
         if (!userId) {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
@@ -530,15 +530,16 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ chat });
       }),
-      listChats: createAuthEndpoint('/social/chat/list', {
+      getChats: createAuthEndpoint('/social/chat/list', {
         method: "GET",
         query: z.object({
-          page: z.number().default(1),
-          limit: z.number().default(10),
-        }),
+          page: z.number().optional().default(1),
+          limit: z.number().optional().default(10),
+        }).optional().default({ page: 1, limit: 10 }),
         response: z.object({
           chats: z.array(Chat),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { page, limit } = ctx.query;
         const userId = ctx.context.session?.user.id;
