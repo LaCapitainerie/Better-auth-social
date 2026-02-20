@@ -53,6 +53,7 @@ export const ChatMessage = z.object({
   content: z.string(),
   senderId: z.string(),
   chatId: z.string(),
+  deletedAt: z.date().nullable().optional().default(null),
 });
 
 export type ChatMessage = z.infer<typeof ChatMessage>;
