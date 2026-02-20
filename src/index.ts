@@ -627,6 +627,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
 
+        if (!content) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
+
         const adapter = ctx.context.adapter;
 
         // Verify user is part of the chat
@@ -649,15 +653,6 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             content: content,
             senderId: userId,
             chatId: chatId,
-          }
-        });
-
-        // Update chat updatedAt
-        await adapter.update<Chat>({
-          model: 'chat',
-          where: [{ field: 'id', value: chatId }],
-          update: {
-            updatedAt: new Date(),
           }
         });
 
