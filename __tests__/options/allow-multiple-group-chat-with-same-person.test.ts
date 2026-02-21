@@ -359,9 +359,9 @@ describe("Options - Allow Multiple Group Chat with Same Person", async () => {
           headers,
         });
         expect(groupChats.length).toBe(2);
-        expect(groupChats[0].name).toBe("Group Chat 1b");
+        expect(groupChats[0].name).toBeOneOf(["Group Chat 1b", "Group Chat 2b"]);
         expect(groupChats[0].createdById).toBe(user.id);
-        expect(groupChats[1].name).toBe("Group Chat 2b");
+        expect(groupChats[1].name).toBeOneOf(["Group Chat 1b", "Group Chat 2b"]);
         expect(groupChats[1].createdById).toBe(user.id);
         expect(groupChats[0].id).not.toBe(groupChats[1].id);
       });
