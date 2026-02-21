@@ -1,31 +1,77 @@
-name: CI
+name: Unit Tests
 
-on:
-  push:
-  pull_request:
+on: [pull_request]
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  unit-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v2
         with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - name: Setup pnpm (lockfile v9 compatible)
-        uses: pnpm/action-setup@v4
+          version: 8
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
         with:
-          version: 9
-          run_install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run tests (Vitest)
-        run: pnpm test
+          node-version: ${{ matrix.node-version }}
+      - name: Install
+        run: pnpm install
+        env:
+          CI: true
+      - name: Test
+        run: |
+          pnpm test:ci
+        env:
+          CI: true
+  eslint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+    steps:
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install
+        run: pnpm install
+        env:
+          CI: true
+      - name: Run linter
+        run: pnpm lint:ci
+        env:
+          CI: true
+  typescript:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+    steps:
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install
+        run: pnpm install
+        env:
+          CI: true
+      - name: Run TypeScript check
+        run: pnpm ts
+        env:
+          CI: true
