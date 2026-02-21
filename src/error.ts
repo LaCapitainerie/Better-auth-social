@@ -19,6 +19,8 @@ export enum ERROR_MESSAGES {
   TOO_LARGE = 'Group cannot be larger than {maxSize} members',
   MAX_SIZE_REACHED = 'Group has reached maximum size of {maxSize} members',
   ALREADY_MEMBER = 'User is already a member of this group',
+
+  MULTIPLE_GROUP_CHAT_WITH_SAME_PERSON = 'You cannot create multiple group chats with the same person',
 };
 
 export const errorMessageToCode = (message: string) => message.replace(/ /g, '_').toUpperCase();
