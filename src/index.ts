@@ -10,6 +10,7 @@ import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, G
 
 export const socialNetwork = (options?: SocialNetworkOptions) => {
   const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
+  const allowMultipleGroupChatWithSamePerson = options?.allowMultipleGroupChatWithSamePerson || false;
   const hooks = options?.hooks || {};
 
   // Helper function to get max group size
@@ -26,6 +27,29 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
   const zResponseSuccess = z.object({
     success: z.boolean(),
   });
+
+
+
+
+  // Source - https://stackoverflow.com/a/64489535
+  // Posted by nkitku, modified by community. See post 'Timeline' for change history
+  // Retrieved 2026-02-21, License - CC BY-SA 4.0
+
+  const groupBy = <T>(array: T[], predicate: (value: T, index: number, array: T[]) => string) =>
+    array.reduce((acc, value, index, array) => {
+      (acc[predicate(value, index, array)] ||= []).push(value);
+      return acc;
+    }, {} as { [key: string]: T[] });
+
+
+    const setsAreEqual = <T>(set1: Set<T>, set2: Set<T>): boolean => {
+      if (set1.size !== set2.size) return false;
+      for (const item of set1) {
+        if (!set2.has(item)) return false;
+      }
+      return true;
+    }
+
 
   return {
     id: 'social-network',
@@ -720,6 +744,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
       }),
 
 
+
       createGroupChat: createAuthEndpoint('/social/group-chat/create', {
         method: "POST",
         body: z.object({
@@ -749,8 +774,33 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         const adapter = ctx.context.adapter;
 
+        if (!allowMultipleGroupChatWithSamePerson) {
+
+          // Check if user is already in a group chat with the same members
+          const groupChatOfUser = await adapter.findMany<GroupChatMember>({
+            model: 'group_chat_member',
+            where: [{ field: 'userId', value: userId, connector: 'AND' }]
+          });
+
+          const existingGroupChat = await adapter.findMany<GroupChatMember>({
+            model: 'group_chat_member',
+            where: [{ field: 'groupChatId', value: groupChatOfUser.map(gcm => gcm.groupChatId), operator: 'in' }]
+          });
+
+          const existingGroupChats = groupBy(existingGroupChat, (gc) => gc.groupChatId);
+          const membersIdsSet = new Set([...memberIds, userId]);
+
+          for (const groupChatMembers of Object.values(existingGroupChats)) {
+            const groupChatMembersIdsSet = new Set(groupChatMembers.map(gcm => gcm.userId));
+
+            if (setsAreEqual(groupChatMembersIdsSet, membersIdsSet)) {
+              throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.MULTIPLE_GROUP_CHAT_WITH_SAME_PERSON });
+            }
+          }
+        }
+
         const groupChat = await adapter.transaction(async (tx) => {
-          
+
           const groupChat = await tx.create<GroupChat>({
             model: 'group_chat',
             data: {
@@ -873,7 +923,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             { field: 'userId', value: userId }
           ]
         });
-        
+
         if (!membership) {
           throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
         }
@@ -893,6 +943,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ success: true });
       }),
+
 
 
       addGroupChatMember: createAuthEndpoint('/social/group-chat/add-member', {

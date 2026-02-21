@@ -8,6 +8,12 @@ export type SocialNetworkOptions = {
   allowSelfFriendRequest?: boolean;
 
   /**
+   * Whether to allow users to create multiple group chats with the same person
+   * Defaults to false
+   */
+  allowMultipleGroupChatWithSamePerson?: boolean;
+
+  /**
    * Maximum number of members allowed in a group chat.
    * Can be a strict number or an async function that returns a number.
    * Defaults to undefined (no limit)
