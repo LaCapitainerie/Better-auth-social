@@ -15,6 +15,16 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
   const messageDeletionRule = options?.messageDeletionRule || 'VISIBLE';
   const hooks = options?.hooks || {};
 
+  const getDeletedMessagePlaceholder = async (message: GroupChatMessage) => {
+    if (typeof options?.deletedMessagePlaceholder === 'string') {
+      return options?.deletedMessagePlaceholder;
+    }
+    if (options?.deletedMessagePlaceholder instanceof Function) {
+      return await options?.deletedMessagePlaceholder(message);
+    }
+    return 'Message has been deleted';
+  };
+
   // Helper function to get max group size
   const getMaxGroupSize = async (): Promise<number | undefined> => {
     if (options?.maxGroupSize === undefined) {
@@ -1193,23 +1203,23 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           where: where,
           limit: limit,
           offset: (page - 1) * (limit),
-        }).then(messages => messages.map(message => {
+        }).then(async messages => await Promise.all(messages.map(async message => {
           if (message.deletedAt !== null) {
             if (messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
               return {
                 ...message,
-                content: 'Message has been deleted',
+                content: await getDeletedMessagePlaceholder(message),
               };
             }
             if (messageDeletionRule === 'VISIBLE' ) {
               return {
                 ...message,
-                content: 'Message has been deleted',
+                content: await getDeletedMessagePlaceholder(message),
               };
             }
           }
           return message;
-        }));
+        })));
 
         return ctx.json({ messages });
       }),

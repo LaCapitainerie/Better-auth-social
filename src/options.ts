@@ -1,4 +1,5 @@
 import { SocialNetworkHooks } from "./hooks.js";
+import { GroupChatMessage } from "./types.js";
 
 export type SocialNetworkOptions = {
   /**
@@ -27,6 +28,12 @@ export type SocialNetworkOptions = {
    * Defaults to VISIBLE
    */
   messageDeletionRule?: 'CANT_DELETE' | 'SENDER_ONLY_VISIBLE' | 'VISIBLE';
+
+  /**
+   * Deleted message placeholder
+   * Defaults to 'Message has been deleted'
+   */
+  deletedMessagePlaceholder?: string | ((message: GroupChatMessage) => Promise<string>);
 
   /**
    * Maximum number of members allowed in a group chat.
