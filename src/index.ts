@@ -945,7 +945,44 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
       }),
 
 
+      getGroupChatMembers: createAuthEndpoint('/social/group-chat/members', {
+        method: "GET",
+        query: z.object({
+          groupChatId: z.string(),
+        }),
+        response: z.object({
+          members: z.array(GroupChatMember),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { groupChatId } = ctx.query;
+        const userId = ctx.context.session?.user.id;
 
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+        
+        const isMember = await adapter.findOne<GroupChatMember>({
+          model: 'group_chat_member',
+          where: [
+            { field: 'groupChatId', value: groupChatId },
+            { field: 'userId', value: userId }
+          ]
+        });
+
+        if (!isMember) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        const members = await adapter.findMany<GroupChatMember>({
+          model: 'group_chat_member',
+          where: [{ field: 'groupChatId', value: groupChatId }]
+        });
+
+        return ctx.json({ members });
+      }),
       addGroupChatMember: createAuthEndpoint('/social/group-chat/add-member', {
         method: "POST",
         body: z.object({
