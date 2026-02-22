@@ -12,6 +12,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
   const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
   const allowMultipleGroupChatWithSamePerson = options?.allowMultipleGroupChatWithSamePerson || false;
   const allowAddingUnknownMembersToGroupChat = options?.allowAddingUnknownMembersToGroupChat || false;
+  const messageDeletionRule = options?.messageDeletionRule || 'VISIBLE';
   const hooks = options?.hooks || {};
 
   // Helper function to get max group size
@@ -1182,12 +1183,33 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
         }
 
+        const where: Where[] = [{ field: 'groupChatId', value: groupChatId, operator: 'eq', connector: 'AND' }];
+        if (messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
+          where.push({ field: 'senderId', value: userId, operator: 'eq', connector: 'AND' });
+        }
+
         const messages = await adapter.findMany<GroupChatMessage>({
           model: 'group_chat_message',
-          where: [{ field: 'groupChatId', value: groupChatId }],
+          where: where,
           limit: limit,
           offset: (page - 1) * (limit),
-        }).then(messages => messages.filter(message => message.deletedAt === null));
+        }).then(messages => messages.map(message => {
+          if (message.deletedAt !== null) {
+            if (messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
+              return {
+                ...message,
+                content: 'Message has been deleted',
+              };
+            }
+            if (messageDeletionRule === 'VISIBLE' ) {
+              return {
+                ...message,
+                content: 'Message has been deleted',
+              };
+            }
+          }
+          return message;
+        }));
 
         return ctx.json({ messages });
       }),
@@ -1256,6 +1278,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }),
         use: [sessionMiddleware],
       }, async (ctx) => {
+
+        if (messageDeletionRule === 'CANT_DELETE') {
+          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
         const { groupChatId, messageId } = ctx.body;
         const userId = ctx.context.session?.user.id;
 
