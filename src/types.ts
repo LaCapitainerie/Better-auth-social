@@ -65,6 +65,7 @@ export const GroupChatMessage = z.object({
   content: z.string(),
   senderId: z.string(),
   groupChatId: z.string(),
+  deletedAt: z.date().nullable().optional().default(null),
 });
 
 export type GroupChatMessage = z.infer<typeof GroupChatMessage>;

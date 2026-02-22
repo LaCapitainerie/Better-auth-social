@@ -258,6 +258,12 @@ export const getSchema = () => {
             field: "id",
           },
         },
+        deletedAt: {
+          type: "date",
+          required: false,
+          defaultValue: null,
+          returned: true,
+        },
         createdAt: {
           type: "date",
           required: true,
