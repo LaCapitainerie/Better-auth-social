@@ -11,6 +11,7 @@ import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, G
 export const socialNetwork = (options?: SocialNetworkOptions) => {
   const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
   const allowMultipleGroupChatWithSamePerson = options?.allowMultipleGroupChatWithSamePerson || false;
+  const allowAddingUnknownMembersToGroupChat = options?.allowAddingUnknownMembersToGroupChat || false;
   const hooks = options?.hooks || {};
 
   // Helper function to get max group size
@@ -42,13 +43,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
     }, {} as { [key: string]: T[] });
 
 
-    const setsAreEqual = <T>(set1: Set<T>, set2: Set<T>): boolean => {
-      if (set1.size !== set2.size) return false;
-      for (const item of set1) {
-        if (!set2.has(item)) return false;
-      }
-      return true;
+  const setsAreEqual = <T>(set1: Set<T>, set2: Set<T>): boolean => {
+    if (set1.size !== set2.size) return false;
+    for (const item of set1) {
+      if (!set2.has(item)) return false;
     }
+    return true;
+  }
 
 
   return {
@@ -826,6 +827,16 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
               return;
             }
 
+            if (!allowAddingUnknownMembersToGroupChat) {
+              const friend = await tx.findOne<Friend>({
+                model: 'friend',
+                where: [{ field: 'userId', value: userId }, { field: 'friendId', value: memberId }]
+              });
+              if (!friend) {
+                throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+              }
+            }
+
             await tx.create<GroupChatMember>({
               model: 'group_chat_member',
               data: {
@@ -963,7 +974,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        
+
         const isMember = await adapter.findOne<GroupChatMember>({
           model: 'group_chat_member',
           where: [
@@ -1011,6 +1022,18 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         if (!groupChat) {
           throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
         }
+
+
+        if (!allowAddingUnknownMembersToGroupChat) {
+          const friend = await adapter.findOne<Friend>({
+            model: 'friend',
+            where: [{ field: 'userId', value: userId }, { field: 'friendId', value: newMemberId }]
+          });
+          if (!friend) {
+            throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          }
+        }
+
         // Check if user is admin or member
         const membership = await adapter.findOne<GroupChatMember>({
           model: 'group_chat_member',
@@ -1108,7 +1131,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         if (groupChat.createdById === memberIdToRemove) {
           throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
         }
-        
+
         await adapter.delete({
           model: 'group_chat_member',
           where: [

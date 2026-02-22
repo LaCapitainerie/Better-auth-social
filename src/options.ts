@@ -14,6 +14,12 @@ export type SocialNetworkOptions = {
   allowMultipleGroupChatWithSamePerson?: boolean;
 
   /**
+   * Whether to allow users to add unknown members to a group chat
+   * Defaults to false
+   */
+  allowAddingUnknownMembersToGroupChat?: boolean;
+
+  /**
    * Maximum number of members allowed in a group chat.
    * Can be a strict number or an async function that returns a number.
    * Defaults to undefined (no limit)
