@@ -851,8 +851,6 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           }));
 
           return groupChat;
-        }).catch(() => {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
         });
 
         if (hooks.onGroupChatJoin) {
@@ -1154,12 +1152,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         method: "GET",
         query: z.object({
           groupChatId: z.string(),
-          page: z.number().default(1),
-          limit: z.number().default(10),
+          page: z.number().optional().default(1),
+          limit: z.number().optional().default(10),
         }),
         response: z.object({
           messages: z.array(GroupChatMessage),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { groupChatId, page, limit } = ctx.query;
         const userId = ctx.context.session?.user.id;
@@ -1201,6 +1200,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           message: GroupChatMessage,
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { groupChatId, content } = ctx.body;
         const userId = ctx.context.session?.user.id;
