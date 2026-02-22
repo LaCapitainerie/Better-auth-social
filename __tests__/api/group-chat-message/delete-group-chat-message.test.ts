@@ -184,7 +184,10 @@ describe("API - Delete Group Chat Message", async () => {
       });
       
       expect(updatedMessages).toBeDefined();
-      expect(updatedMessages.length).toBe(0);
+      expect(updatedMessages.length).toBe(1);
+      expect(updatedMessages[0].content).toBe('Message has been deleted');
+      expect(updatedMessages[0].deletedAt).toBeDefined();
+      expect(updatedMessages[0].deletedAt).toBeInstanceOf(Date);
     });
 
   });
