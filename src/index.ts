@@ -1058,7 +1058,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ success: true });
       }),
-      removeGroupChatMember: createAuthEndpoint('/social/group-chat/remove-member', {
+      removeMemberFromGroupChat: createAuthEndpoint('/social/group-chat/remove-member', {
         method: "POST",
         body: z.object({
           groupChatId: z.string(),
@@ -1067,6 +1067,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           success: z.boolean(),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { groupChatId, userId: memberIdToRemove } = ctx.body;
         const userId = ctx.context.session?.user.id;
@@ -1086,7 +1087,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           ]
         });
 
-        if (!membership || membership.role !== 'admin') {
+        if (!membership) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        if (membership.role !== 'admin') {
           throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
         }
 
@@ -1103,12 +1108,12 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         if (groupChat.createdById === memberIdToRemove) {
           throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
         }
-
+        
         await adapter.delete({
           model: 'group_chat_member',
           where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: memberIdToRemove }
+            { field: 'groupChatId', value: groupChatId, connector: 'AND' },
+            { field: 'id', value: memberIdToRemove, connector: 'AND' }
           ]
         });
 
