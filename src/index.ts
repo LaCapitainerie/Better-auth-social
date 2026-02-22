@@ -13,6 +13,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
   const allowMultipleGroupChatWithSamePerson = options?.allowMultipleGroupChatWithSamePerson || false;
   const allowAddingUnknownMembersToGroupChat = options?.allowAddingUnknownMembersToGroupChat || false;
   const messageDeletionRule = options?.messageDeletionRule || 'VISIBLE';
+  const automaticBackFriend = options?.automaticBackFriend || false;
   const hooks = options?.hooks || {};
 
   const getDeletedMessagePlaceholder = async (message: GroupChatMessage) => {
@@ -201,13 +202,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             return updatedRequest;
           }
 
-          await tx.create<Friend>({
-            model: 'friend',
-            data: {
-              userId: friendRequest.receiverId,
-              friendId: friendRequest.senderId,
-            }
-          });
+          if (automaticBackFriend) {
+            await tx.create<Friend>({
+              model: 'friend',
+              data: {
+                userId: friendRequest.receiverId,
+                friendId: friendRequest.senderId,
+              }
+            });
+          }
 
           return updatedRequest;
         });

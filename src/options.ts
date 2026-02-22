@@ -36,6 +36,12 @@ export type SocialNetworkOptions = {
   deletedMessagePlaceholder?: string | ((message: GroupChatMessage) => Promise<string>);
 
   /**
+   * Whether to automatically back a friend request when it is accepted
+   * Defaults to false
+   */
+  automaticBackFriend?: boolean;
+
+  /**
    * Maximum number of members allowed in a group chat.
    * Can be a strict number or an async function that returns a number.
    * Defaults to undefined (no limit)
