@@ -1187,7 +1187,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           where: [{ field: 'groupChatId', value: groupChatId }],
           limit: limit,
           offset: (page - 1) * (limit),
-        });
+        }).then(messages => messages.filter(message => message.deletedAt === null));
 
         return ctx.json({ messages });
       }),
@@ -1234,6 +1234,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             content: content,
             senderId: userId,
             groupChatId: groupChatId,
+            deletedAt: null,
           }
         });
 
@@ -1243,6 +1244,58 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         return ctx.json({ message });
+      }),
+      deleteGroupChatMessage: createAuthEndpoint('/social/group-chat/delete-message', {
+        method: "POST",
+        body: z.object({
+          groupChatId: z.string(),
+          messageId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { groupChatId, messageId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const message = await adapter.findOne<GroupChatMessage>({
+          model: 'group_chat_message',
+          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChatId }]
+        });
+
+        if (!message || message.deletedAt !== null) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        if (message.senderId !== userId) {
+          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
+        const updatedMessage = await adapter.update<GroupChatMessage>({
+          model: 'group_chat_message',
+          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChatId }],
+          update: {
+            deletedAt: new Date(),
+          }
+        });
+
+        if (!updatedMessage) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        // Call hook
+        if (hooks.onGroupChatMessageDelete) {
+          await hooks.onGroupChatMessageDelete(updatedMessage);
+        }
+
+        return ctx.json({ success: true });
       }),
     },
   } satisfies BetterAuthPlugin;
