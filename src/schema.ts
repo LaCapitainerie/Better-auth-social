@@ -233,7 +233,7 @@ export const getSchema = () => {
         },
       },
     },
-    message: {
+    group_chat_message: {
       fields: {
         content: {
           type: "string",
@@ -249,20 +249,9 @@ export const getSchema = () => {
             field: "id",
           },
         },
-        chatId: {
-          type: "string",
-          required: false,
-          defaultValue: null,
-          returned: true,
-          references: {
-            model: "chat",
-            field: "id",
-          },
-        },
         groupChatId: {
           type: "string",
-          required: false,
-          defaultValue: null,
+          required: true,
           returned: true,
           references: {
             model: "group_chat",
