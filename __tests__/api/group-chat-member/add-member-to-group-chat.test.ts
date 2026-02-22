@@ -181,8 +181,6 @@ describe("API - Add Member to Group Chat", async () => {
         headers,
       });
       expect(friends).toBeDefined();
-      console.log(friends);
-      
       expect(friends.length).toBe(2);
       const foreignUser2 = friends[1].friendId;
 
@@ -191,7 +189,9 @@ describe("API - Add Member to Group Chat", async () => {
           groupChatId: groupChat.id,
           userId: foreignUser2,
         },
-        headers,
+        headers: {
+          Authorization: `Bearer ${tokenForeignUser1?.toString()}`,
+        },
         asResponse: true,
       });
       const body = await response.json();
@@ -207,11 +207,21 @@ describe("API - Add Member to Group Chat", async () => {
       expect(groupChats.length).toBe(1);
       const groupChat = groupChats[0];
 
+      const { members: initialMembers } = await auth.api.getGroupChatMembers({
+        query: {
+          groupChatId: groupChat.id,
+        },
+        headers,
+      });
+      expect(initialMembers).toBeDefined();
+      expect(initialMembers.length).toBe(2);
+
       const { friends } = await auth.api.getFriends({
         headers,
       });
       expect(friends).toBeDefined();
       expect(friends.length).toBe(2);
+      const foreignUser1 = friends[0].friendId;
       const foreignUser2 = friends[1].friendId;
 
       const response = await auth.api.addMemberToGroupChat({
@@ -224,6 +234,18 @@ describe("API - Add Member to Group Chat", async () => {
       });
       const body = await response.json();
       expect(body.success).toBe(true);
+
+      const { members: updatedMembers } = await auth.api.getGroupChatMembers({
+        query: {
+          groupChatId: groupChat.id,
+        },
+        headers,
+      });
+      expect(updatedMembers).toBeDefined();
+      expect(updatedMembers.length).toBe(3);
+      expect(updatedMembers.find(m => m.userId === foreignUser1)?.role).toBe('member');
+      expect(updatedMembers.find(m => m.userId === foreignUser2)?.role).toBe('member');
+      expect(updatedMembers.find(m => m.userId === user.id)?.role).toBe('admin');
     });
   });
 });
