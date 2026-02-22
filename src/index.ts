@@ -1209,6 +1209,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
 
+        if (!content || content.length === 0) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        }
+
         const adapter = ctx.context.adapter;
 
         // Verify user is a member of the group
