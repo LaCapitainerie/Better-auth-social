@@ -946,7 +946,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
 
 
-      addGroupChatMember: createAuthEndpoint('/social/group-chat/add-member', {
+      addMemberToGroupChat: createAuthEndpoint('/social/group-chat/add-member', {
         method: "POST",
         body: z.object({
           groupChatId: z.string(),
@@ -955,6 +955,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         response: z.object({
           success: z.boolean(),
         }),
+        use: [sessionMiddleware],
       }, async (ctx) => {
         const { groupChatId, userId: newMemberId } = ctx.body;
         const userId = ctx.context.session?.user.id;
@@ -986,6 +987,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
         }
 
+        if (membership.role !== 'admin') {
+          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
         // Check if new member is already in the group
         const existingMember = await adapter.findOne<GroupChatMember>({
           model: 'group_chat_member',
@@ -997,19 +1002,6 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         if (existingMember) {
           throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_MEMBER });
-        }
-
-        // Check max group size
-        const maxSize = await getMaxGroupSize();
-        if (maxSize !== undefined) {
-          const currentMembers = await adapter.findMany<GroupChatMember>({
-            model: 'group_chat_member',
-            where: [{ field: 'groupChatId', value: groupChatId }]
-          });
-
-          if (currentMembers.length + 1 > maxSize) {
-            throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.MAX_SIZE_REACHED.replace('{maxSize}', maxSize.toString()) });
-          }
         }
 
         await adapter.create<GroupChatMember>({
