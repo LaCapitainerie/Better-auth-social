@@ -5,15 +5,12 @@ import { z } from 'zod';
 
 import { getSchema } from './schema.js';
 import { ERROR_MESSAGES } from './error.js';
-import type { SocialNetworkOptions } from './options.js';
+import { SocialNetworkOptions } from './options.js';
 import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser } from './types.js';
 
 export const socialNetwork = (options?: SocialNetworkOptions) => {
-  const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
-  const allowMultipleGroupChatWithSamePerson = options?.allowMultipleGroupChatWithSamePerson || false;
-  const allowAddingUnknownMembersToGroupChat = options?.allowAddingUnknownMembersToGroupChat || false;
-  const messageDeletionRule = options?.messageDeletionRule || 'VISIBLE';
-  const automaticBackFriend = options?.automaticBackFriend || false;
+
+  const OPTIONS = SocialNetworkOptions.parse(options);
   const hooks = options?.hooks || {};
 
   const getDeletedMessagePlaceholder = async (message: GroupChatMessage) => {
@@ -26,16 +23,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
     return 'Message has been deleted';
   };
 
-  // Helper function to get max group size
-  const getMaxGroupSize = async (): Promise<number | undefined> => {
-    if (options?.maxGroupSize === undefined) {
-      return undefined;
-    }
-    if (typeof options.maxGroupSize === 'number') {
-      return options.maxGroupSize;
-    }
-    return await options.maxGroupSize();
-  };
+  
+
+
 
   const zResponseSuccess = z.object({
     success: z.boolean(),
@@ -86,7 +76,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
         }
 
-        if (!allowSelfFriendRequest && userId === receiverId) {
+        if (!OPTIONS.allowSelfFriendRequest && userId === receiverId) {
           throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_REQUEST_NOT_ALLOWED });
         }
 
@@ -198,11 +188,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             }
           });
 
-          if (allowSelfFriendRequest && friendRequest.senderId === friendRequest.receiverId) {
+          if (OPTIONS.allowSelfFriendRequest && friendRequest.senderId === friendRequest.receiverId) {
             return updatedRequest;
           }
 
-          if (automaticBackFriend) {
+          if (OPTIONS.automaticBackFriend) {
             await tx.create<Friend>({
               model: 'friend',
               data: {
@@ -446,7 +436,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             ]
           });
 
-          if (allowSelfFriendRequest && userId === friendId) {
+          if (OPTIONS.allowSelfFriendRequest && userId === friendId) {
             return;
           }
 
@@ -787,9 +777,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
         }
 
+        if (memberIds.length +1 > OPTIONS.maxGroupSize) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.TOO_LARGE });
+        }
+
         const adapter = ctx.context.adapter;
 
-        if (!allowMultipleGroupChatWithSamePerson) {
+        if (!OPTIONS.allowMultipleGroupChatWithSamePerson) {
 
           // Check if user is already in a group chat with the same members
           const groupChatOfUser = await adapter.findMany<GroupChatMember>({
@@ -841,7 +835,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
               return;
             }
 
-            if (!allowAddingUnknownMembersToGroupChat) {
+            if (!OPTIONS.allowAddingUnknownMembersToGroupChat) {
               const friend = await tx.findOne<Friend>({
                 model: 'friend',
                 where: [{ field: 'userId', value: userId }, { field: 'friendId', value: memberId }]
@@ -1095,7 +1089,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
 
-        if (!allowAddingUnknownMembersToGroupChat) {
+        if (!OPTIONS.allowAddingUnknownMembersToGroupChat) {
           const friend = await adapter.findOne<Friend>({
             model: 'friend',
             where: [{ field: 'userId', value: userId }, { field: 'friendId', value: newMemberId }]
@@ -1103,6 +1097,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           if (!friend) {
             throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
           }
+        }
+
+        const groupChatMembers = await adapter.findMany<GroupChatMember>({
+          model: 'group_chat_member',
+          where: [{ field: 'groupChatId', value: groupChatId }]
+        });
+        if (groupChatMembers.length >= OPTIONS.maxGroupSize) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.MAX_SIZE_REACHED });
         }
 
         // Check if user is admin or member
@@ -1256,7 +1258,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const where: Where[] = [{ field: 'groupChatId', value: groupChatId, operator: 'eq', connector: 'AND' }];
-        if (messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
+        if (OPTIONS.messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
           where.push({ field: 'senderId', value: userId, operator: 'eq', connector: 'AND' });
         }
 
@@ -1267,13 +1269,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           offset: (page - 1) * (limit),
         }).then(async messages => await Promise.all(messages.map(async message => {
           if (message.deletedAt !== null) {
-            if (messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
+            if (OPTIONS.messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
               return {
                 ...message,
                 content: await getDeletedMessagePlaceholder(message),
               };
             }
-            if (messageDeletionRule === 'VISIBLE' ) {
+            if (OPTIONS.messageDeletionRule === 'VISIBLE' ) {
               return {
                 ...message,
                 content: await getDeletedMessagePlaceholder(message),
@@ -1351,7 +1353,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         use: [sessionMiddleware],
       }, async (ctx) => {
 
-        if (messageDeletionRule === 'CANT_DELETE') {
+        if (OPTIONS.messageDeletionRule === 'CANT_DELETE') {
           throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
         }
 

@@ -16,8 +16,8 @@ export enum ERROR_MESSAGES {
 
   NOT_FRIENDS = 'Users must be friends to create a chat',
   ALREADY_EXISTS = 'Chat already exists',
-  TOO_LARGE = 'Group cannot be larger than {maxSize} members',
-  MAX_SIZE_REACHED = 'Group has reached maximum size of {maxSize} members',
+  TOO_LARGE = 'Group cannot be larger than maximumGroupSize option value',
+  MAX_SIZE_REACHED = 'Group has reached maximum size of maximumGroupSize option value',
   ALREADY_MEMBER = 'User is already a member of this group',
 
   MULTIPLE_GROUP_CHAT_WITH_SAME_PERSON = 'You cannot create multiple group chats with the same person',
