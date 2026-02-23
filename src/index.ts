@@ -1447,6 +1447,32 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ success: true });
       }),
+      isBlocked: createAuthEndpoint('/social/blocked-users/is-blocked', {
+        method: "GET",
+        query: z.object({
+          userId: z.string(),
+        }),
+        response: z.object({
+          isBlocked: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { userId: blockedUserId } = ctx.query;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const blockedUser = await adapter.findOne<BlockedUser>({
+          model: 'blocked_user',
+          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
+        });
+
+        return ctx.json({ isBlocked: !!blockedUser });
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
