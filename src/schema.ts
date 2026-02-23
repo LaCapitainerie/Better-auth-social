@@ -278,5 +278,39 @@ export const getSchema = () => {
         },
       },
     },
+    blocked_user: {
+      fields: {
+        userId: {
+          type: "string",
+          required: true,
+          returned: true,
+          references: {
+            model: "user",
+            field: "id",
+          },
+        },
+        blockedUserId: {
+          type: "string",
+          required: true,
+          returned: true,
+          references: {
+            model: "user",
+            field: "id",
+          },
+        },
+        createdAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+        updatedAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+      },
+    }
   } satisfies BetterAuthPluginDBSchema;
 };

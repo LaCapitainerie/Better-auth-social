@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { getSchema } from './schema.js';
 import { ERROR_MESSAGES } from './error.js';
 import type { SocialNetworkOptions } from './options.js';
-import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage } from './types.js';
+import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser } from './types.js';
 
 export const socialNetwork = (options?: SocialNetworkOptions) => {
   const allowSelfFriendRequest = options?.allowSelfFriendRequest || false;
@@ -1336,6 +1336,29 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         return ctx.json({ success: true });
+      }),
+
+      getBlockedUsers: createAuthEndpoint('/social/blocked-users/list', {
+        method: "GET",
+        response: z.object({
+          blockedUsers: z.array(BlockedUser),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+        
+        const blockedUsers = await adapter.findMany<BlockedUser>({
+          model: 'blocked_user',
+          where: [{ field: 'userId', value: userId }],
+        });
+
+        return ctx.json({ blockedUsers });
       }),
     },
   } satisfies BetterAuthPlugin;
