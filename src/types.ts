@@ -74,8 +74,6 @@ export const BlockedUser = z.object({
   id: z.string(),
   userId: z.string(),
   blockedUserId: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
 });
 
 export type BlockedUser = z.infer<typeof BlockedUser>;

@@ -1360,6 +1360,54 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ blockedUsers });
       }),
+      blockUser: createAuthEndpoint('/social/blocked-users/block', {
+        method: "POST",
+        body: z.object({
+          userId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { userId: blockedUserId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        if (userId === blockedUserId) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_BLOCK_NOT_ALLOWED });
+        }
+
+        const { adapter, internalAdapter } = ctx.context;
+
+        const foreignUser = await internalAdapter.findUserById(blockedUserId);
+        if (!foreignUser) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        // Check if user is already blocked
+        const existingBlockedUser = await adapter.findOne<BlockedUser>({
+          model: 'blocked_user',
+          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
+        });
+
+        if (existingBlockedUser) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_BLOCKED });
+        }
+
+        const blockedUser = await adapter.create<BlockedUser>({
+          model: 'blocked_user',
+          data: {
+            userId: userId,
+            blockedUserId: blockedUserId,
+          }
+        });
+
+        return ctx.json({ blockedUser });
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
