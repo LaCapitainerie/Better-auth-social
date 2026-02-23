@@ -966,6 +966,65 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ success: true });
       }),
+      updateGroupChat: createAuthEndpoint('/social/group-chat/update', {
+        method: "POST",
+        body: z.object({
+          id: GroupChat.shape.id,
+          name: GroupChat.shape.name.optional(),
+          description: GroupChat.shape.description.optional(),
+        }),
+        response: z.object({
+          groupChat: GroupChat,
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { id } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const membership = await adapter.findOne<GroupChatMember>({
+          model: 'group_chat_member',
+          where: [
+            { field: 'groupChatId', value: id },
+            { field: 'userId', value: userId }
+          ]
+        });
+
+        if (!membership) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        if (membership.role !== 'admin') {
+          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
+        const groupChat = await adapter.findOne<GroupChat>({
+          model: 'group_chat',
+          where: [{ field: 'id', value: id }]
+        });
+
+        if (!groupChat) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        const updatedGroupChatData = {
+          name: ctx.body.name,
+          description: ctx.body.description,
+        };
+
+        const updatedGroupChat = await adapter.update<GroupChat>({
+          model: 'group_chat',
+          where: [{ field: 'id', value: id }],
+          update: updatedGroupChatData,
+        });
+
+        return ctx.json({ updatedGroupChat });
+      }),
 
 
       getGroupChatMembers: createAuthEndpoint('/social/group-chat/members', {
