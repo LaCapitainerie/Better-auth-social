@@ -25,13 +25,37 @@ describe("API - getBlockedUsers", async () => {
     });
 
     it("should return a user list if user has blocked some users", async () => {
+      const { user: foreignUser, token: tokenForeignUser } = await auth.api.signUpEmail({
+        body: {
+          name: "Foreign User",
+          email: "foreign-user@example.com",
+          password: "password",
+        },
+      });
+      expect(foreignUser).toBeDefined();
+      expect(tokenForeignUser).toBeDefined();
+
+      const responseFirstBlock = await auth.api.blockUser({
+        body: {
+          userId: foreignUser.id,
+        },
+        headers,
+        asResponse: true,
+      });
+      const bodyFirstBlock = await responseFirstBlock.json();
+      expect(bodyFirstBlock.blockedUser).toBeDefined();
+      expect(bodyFirstBlock.blockedUser.userId).toBe(user.id);
+      expect(bodyFirstBlock.blockedUser.blockedUserId).toBe(foreignUser.id);
+
       const response = await auth.api.getBlockedUsers({
         headers,
         asResponse: true,
       });
       const body = await response.json();
       expect(body.blockedUsers).toBeDefined();
-      expect(body.blockedUsers.length).toBe(0);
+      expect(body.blockedUsers.length).toBe(1);
+      expect(body.blockedUsers[0].userId).toBe(user.id);
+      expect(body.blockedUsers[0].blockedUserId).toBe(foreignUser.id);
     });
   });
 });

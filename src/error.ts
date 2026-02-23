@@ -21,6 +21,9 @@ export enum ERROR_MESSAGES {
   ALREADY_MEMBER = 'User is already a member of this group',
 
   MULTIPLE_GROUP_CHAT_WITH_SAME_PERSON = 'You cannot create multiple group chats with the same person',
+
+  ALREADY_BLOCKED = 'User is already blocked',
+  SELF_BLOCK_NOT_ALLOWED = 'You cannot block yourself',
 };
 
 export const errorMessageToCode = (message: string) => message.replace(/ /g, '_').toUpperCase();
