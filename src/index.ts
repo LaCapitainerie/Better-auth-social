@@ -1408,6 +1408,45 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ blockedUser });
       }),
+      unblockUser: createAuthEndpoint('/social/blocked-users/unblock', {
+        method: "POST",
+        body: z.object({
+          userId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { userId: blockedUserId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        if (userId === blockedUserId) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_BLOCK_NOT_ALLOWED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const blockedUser = await adapter.findOne<BlockedUser>({
+          model: 'blocked_user',
+          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
+        });
+
+        if (!blockedUser) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        await adapter.delete({
+          model: 'blocked_user',
+          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
+        });
+
+        return ctx.json({ success: true });
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
