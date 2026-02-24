@@ -77,3 +77,13 @@ export const BlockedUser = z.object({
 });
 
 export type BlockedUser = z.infer<typeof BlockedUser>;
+
+export const Post = z.object({
+  id: z.string(),
+  posterId: z.string(),
+  content: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type Post = z.infer<typeof Post>;

@@ -311,6 +311,36 @@ export const getSchema = () => {
           returned: true,
         },
       },
-    }
+    },
+    post: {
+      fields: {
+        posterId: {
+          type: "string",
+          required: true,
+          returned: true,
+          references: {
+            model: "user",
+            field: "id",
+          },
+        },
+        content: {
+          type: "string",
+          required: true,
+          returned: true,
+        },
+        createdAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+        updatedAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+      },
+    },
   } satisfies BetterAuthPluginDBSchema;
 };
