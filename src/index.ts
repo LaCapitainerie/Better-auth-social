@@ -1,4 +1,4 @@
-import { mergeSchema } from 'better-auth/db';
+import { mergeSchema, User } from 'better-auth/db';
 import { BetterAuthPlugin, Where } from 'better-auth';
 import { APIError, createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
 import { z } from 'zod';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { getSchema } from './schema.js';
 import { ERROR_MESSAGES } from './error.js';
 import { SocialNetworkOptions } from './options.js';
-import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser } from './types.js';
+import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post } from './types.js';
 
 export const socialNetwork = (options?: SocialNetworkOptions) => {
 
@@ -1399,6 +1399,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         return ctx.json({ success: true });
       }),
 
+
+
       getBlockedUsers: createAuthEndpoint('/social/blocked-users/list', {
         method: "GET",
         response: z.object({
@@ -1533,6 +1535,35 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         return ctx.json({ isBlocked: !!blockedUser });
+      }),
+
+
+
+      getPostsFromUser: createAuthEndpoint('/social/posts/from-user', {
+        method: "GET",
+        query: z.object({
+          userId: z.string(),
+        }),
+        response: z.object({
+          posts: z.array(Post),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { userId: targetUserId } = ctx.query;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const posts = await adapter.findMany<Post>({
+          model: 'post',
+          where: [{ field: 'posterId', value: targetUserId }],
+        });
+
+        return ctx.json({ posts });
       }),
     },
   } satisfies BetterAuthPlugin;
