@@ -23,6 +23,7 @@
     }
   },
   "scripts": {
+    "ts": "tsc --noEmit",
     "build": "tsc",
     "test": "vitest",
     "test:ci": "vitest run"
