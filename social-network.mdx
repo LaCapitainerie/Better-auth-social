@@ -1,0 +1,1177 @@
+---
+title: Social Network
+description: The social network plugin adds friends, friend requests, chat, group chat, blocked users, and posts to your auth system.
+---
+
+The social network plugin is a lightweight plugin that adds social features to Better Auth: friend requests and friends, direct chat, group chat, blocked users, and posts with likes.
+
+## Installation
+
+<Steps>
+<Step>
+### Add the plugin to your **auth** config
+
+```ts title="auth.ts"
+import { betterAuth } from "better-auth"
+import { socialNetwork } from "better-auth-social" // [!code highlight]
+
+export const auth = betterAuth({
+    plugins: [
+        socialNetwork() // [!code highlight]
+    ]
+})
+```
+</Step>
+
+<Step>
+### Migrate the database
+
+Run the migration or generate the schema to add the necessary fields and tables to the database.
+
+<Tabs items={["migrate", "generate"]}>
+    <Tab value="migrate">
+    ```package-install
+    npx auth migrate
+    ```
+    </Tab>
+    <Tab value="generate">
+    ```package-install
+    npx auth generate
+    ```
+    </Tab>
+</Tabs>
+See the [Schema](#schema) section to add the fields manually.
+</Step>
+
+<Step>
+### Add the client plugin
+
+```ts title="auth-client.ts"
+import { createAuthClient } from "better-auth/client"
+import { socialNetworkClient } from "better-auth-social/client" // [!code highlight]
+
+export const authClient = createAuthClient({
+    plugins: [
+        socialNetworkClient() // [!code highlight]
+    ]
+})
+```
+</Step>
+</Steps>
+
+## Usage
+
+Once the plugin is installed, the client exposes methods under the `social` namespace (e.g. `authClient.social.sendFriendRequest`, `authClient.social.getFriends`), and the server handles the corresponding API routes under `/social/*`.
+
+## Friend Requests
+
+Friend requests let users send, accept, or reject friendship requests.
+
+### Send a friend request
+
+<APIMethod path="/social/friend-request/send" method="POST" requireSession>
+
+```ts
+type sendFriendRequest = {
+  /**
+   * The ID of the user receiving the friend request.
+   */
+  receiverId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+The authenticated user is the sender. You cannot send a request to yourself (unless `allowSelfFriendRequest` is enabled), to a non-existent user, to an existing friend, or if a pending request already exists.
+
+### Accept a friend request
+
+<APIMethod path="/social/friend-request/accept" method="POST" requireSession>
+
+```ts
+type acceptFriendRequest = {
+  /**
+   * The ID of the friend request to accept.
+   */
+  requestId: string = "request-id"
+}
+```
+
+</APIMethod>
+
+Only the receiver can accept. If `automaticBackFriend` is enabled, the friendship is created in both directions (each user has the other as friend).
+
+### Reject a friend request
+
+<APIMethod path="/social/friend-request/reject" method="POST" requireSession>
+
+```ts
+type rejectFriendRequest = {
+  /**
+   * The ID of the friend request to reject.
+   */
+  requestId: string = "request-id"
+}
+```
+
+</APIMethod>
+
+### List friend requests sent
+
+<APIMethod path="/social/friend-request/sent/list" method="GET" requireSession>
+
+```ts
+type getFriendRequestsSent = {
+  /**
+   * Filter by status. If not provided, all statuses are returned.
+   */
+  status?: "pending" | "accepted" | "rejected" = "pending"
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of items per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+### List friend requests received
+
+<APIMethod path="/social/friend-request/received/list" method="GET" requireSession>
+
+```ts
+type getFriendRequestsReceived = {
+  /**
+   * Filter by status.
+   */
+  status?: "pending" | "accepted" | "rejected" = "pending"
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of items per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+### Reject all friend requests
+
+Rejects all pending friend requests received by the current user.
+
+<APIMethod path="/social/friend-request/reject-all" method="POST" requireSession noResult>
+
+```ts
+type rejectAllFriendRequests = {}
+```
+
+</APIMethod>
+
+## Friends
+
+### List friends
+
+<APIMethod path="/social/friends/list" method="GET" requireSession>
+
+```ts
+type getFriends = {
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of friends per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+### Remove a friend
+
+Removes the friendship in both directions.
+
+<APIMethod path="/social/friends/remove" method="POST" requireSession noResult>
+
+```ts
+type removeFriend = {
+  /**
+   * The ID of the friend to remove.
+   */
+  friendId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+### Check if user is a friend
+
+<APIMethod path="/social/friends/is-friend" method="GET" requireSession>
+
+```ts
+type isFriend = {
+  /**
+   * The user ID to check.
+   */
+  friendId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+## Chat (direct messages)
+
+Chats are 1:1 conversations between two friends. Only friends can have a chat.
+
+### Get or create a chat
+
+Returns the existing chat with the given friend, or creates one.
+
+<APIMethod path="/social/chat/get-or-create" method="GET" requireSession>
+
+```ts
+type getOrCreateChat = {
+  /**
+   * The friend's user ID.
+   */
+  friendId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+### List chats
+
+<APIMethod path="/social/chat/list" method="GET" requireSession>
+
+```ts
+type getChats = {
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of chats per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+### List chat messages
+
+<APIMethod path="/social/chat-messages/list" method="GET" requireSession>
+
+```ts
+type getChatMessages = {
+  /**
+   * The chat ID.
+   */
+  chatId: string = "chat-id"
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of messages per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+Messages with `deletedAt` set are excluded from the list.
+
+### Send a chat message
+
+<APIMethod path="/social/chat-messages/send" method="POST" requireSession>
+
+```ts
+type sendChatMessage = {
+  /**
+   * The chat ID.
+   */
+  chatId: string = "chat-id"
+  /**
+   * The message content.
+   */
+  content: string = "Hello!"
+}
+```
+
+</APIMethod>
+
+### Delete a chat message
+
+Soft-deletes the message (sets `deletedAt`). Only the sender can delete their message.
+
+<APIMethod path="/social/chat-messages/delete" method="POST" requireSession noResult>
+
+```ts
+type deleteChatMessage = {
+  /**
+   * The chat message ID to delete.
+   */
+  chatMessageId: string = "message-id"
+}
+```
+
+</APIMethod>
+
+## Group chat
+
+Group chats have a name, optional description, and multiple members. The creator is an admin; other members can be added by admins. By default, you can only add friends to a group (see `allowAddingUnknownMembersToGroupChat`).
+
+### Create a group chat
+
+<APIMethod path="/social/group-chat/create" method="POST" requireSession>
+
+```ts
+type createGroupChat = {
+  /**
+   * Name of the group chat.
+   */
+  name: string = "My Group"
+  /**
+   * Optional description.
+   */
+  description?: string = "Description"
+  /**
+   * User IDs of initial members (besides the creator). Must be non-empty.
+   */
+  memberIds: string[] = ["user-id-1", "user-id-2"]
+}
+```
+
+</APIMethod>
+
+The total number of members (creator + `memberIds`) must not exceed `maxGroupSize`. If `allowMultipleGroupChatWithSamePerson` is false, you cannot create another group with the exact same set of members.
+
+### List group chats
+
+Returns group chats the current user is a member of.
+
+<APIMethod path="/social/group-chat/list" method="GET" requireSession>
+
+```ts
+type getGroupChats = {
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of group chats per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+### Leave a group chat
+
+<APIMethod path="/social/group-chat/leave" method="POST" requireSession noResult>
+
+```ts
+type leaveGroupChat = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+}
+```
+
+</APIMethod>
+
+### Update a group chat
+
+Only admins can update name and description.
+
+<APIMethod path="/social/group-chat/update" method="POST" requireSession>
+
+```ts
+type updateGroupChat = {
+  /**
+   * The group chat ID.
+   */
+  id: string = "group-chat-id"
+  /**
+   * New name (optional).
+   */
+  name?: string = "New Name"
+  /**
+   * New description (optional).
+   */
+  description?: string = "New description"
+}
+```
+
+</APIMethod>
+
+### List group chat members
+
+<APIMethod path="/social/group-chat/members" method="GET" requireSession>
+
+```ts
+type getGroupChatMembers = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+}
+```
+
+</APIMethod>
+
+### Add member to group chat
+
+Only admins can add members. The new member must be a friend of the current user unless `allowAddingUnknownMembersToGroupChat` is true. The group size must remain within `maxGroupSize`.
+
+<APIMethod path="/social/group-chat/add-member" method="POST" requireSession noResult>
+
+```ts
+type addMemberToGroupChat = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+  /**
+   * The user ID to add.
+   */
+  userId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+### Remove member from group chat
+
+Only admins can remove members. The group creator cannot be removed.
+
+<APIMethod path="/social/group-chat/remove-member" method="POST" requireSession noResult>
+
+```ts
+type removeMemberFromGroupChat = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+  /**
+   * The user ID to remove.
+   */
+  userId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+### List group chat messages
+
+<APIMethod path="/social/group-chat/messages" method="GET" requireSession>
+
+```ts
+type getGroupChatMessages = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of messages per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+Behavior of deleted messages depends on `messageDeletionRule` and `deletedMessagePlaceholder`: they can be hidden, shown only to the sender, or shown to everyone with a placeholder.
+
+### Send a group chat message
+
+<APIMethod path="/social/group-chat/send-message" method="POST" requireSession>
+
+```ts
+type sendGroupChatMessage = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+  /**
+   * The message content.
+   */
+  content: string = "Hello everyone!"
+}
+```
+
+</APIMethod>
+
+### Delete a group chat message
+
+Only the sender can delete their message. Forbidden if `messageDeletionRule` is `CANT_DELETE`.
+
+<APIMethod path="/social/group-chat/delete-message" method="POST" requireSession noResult>
+
+```ts
+type deleteGroupChatMessage = {
+  /**
+   * The group chat ID.
+   */
+  groupChatId: string = "group-chat-id"
+  /**
+   * The message ID to delete.
+   */
+  messageId: string = "message-id"
+}
+```
+
+</APIMethod>
+
+## Blocked users
+
+Users can block others to prevent certain interactions. Blocking is one-way (blocker → blocked).
+
+### List blocked users
+
+<APIMethod path="/social/blocked-users/list" method="GET" requireSession>
+
+```ts
+type getBlockedUsers = {}
+```
+
+</APIMethod>
+
+### Block a user
+
+<APIMethod path="/social/blocked-users/block" method="POST" requireSession>
+
+```ts
+type blockUser = {
+  /**
+   * The user ID to block.
+   */
+  userId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+You cannot block yourself. Returns the created `blocked_user` record.
+
+### Unblock a user
+
+<APIMethod path="/social/blocked-users/unblock" method="POST" requireSession noResult>
+
+```ts
+type unblockUser = {
+  /**
+   * The user ID to unblock.
+   */
+  userId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+### Check if user is blocked
+
+<APIMethod path="/social/blocked-users/is-blocked" method="GET" requireSession>
+
+```ts
+type isBlocked = {
+  /**
+   * The user ID to check.
+   */
+  userId: string = "user-id"
+}
+```
+
+</APIMethod>
+
+## Posts
+
+Users can create posts, and others can like or unlike them. Counts (likes, comments, shares) are stored on the post.
+
+### Get posts from a user
+
+<APIMethod path="/social/posts/from-user" method="GET" requireSession>
+
+```ts
+type getPostsFromUser = {
+  /**
+   * The user ID whose posts to fetch.
+   */
+  userId: string = "user-id"
+  /**
+   * Page number (1-based).
+   */
+  page?: number = 1
+  /**
+   * Number of posts per page.
+   */
+  limit?: number = 10
+}
+```
+
+</APIMethod>
+
+### Create a post
+
+<APIMethod path="/social/posts/create" method="POST" requireSession>
+
+```ts
+type createPost = {
+  /**
+   * Post content (1–1000 characters).
+   */
+  content: string = "Hello world!"
+}
+```
+
+</APIMethod>
+
+### Delete a post
+
+Only the poster can delete their post.
+
+<APIMethod path="/social/posts/delete" method="POST" requireSession noResult>
+
+```ts
+type deletePost = {
+  /**
+   * The post ID to delete.
+   */
+  postId: string = "post-id"
+}
+```
+
+</APIMethod>
+
+### Like a post
+
+<APIMethod path="/social/posts/like" method="POST" requireSession>
+
+```ts
+type likePost = {
+  /**
+   * The post ID to like.
+   */
+  postId: string = "post-id"
+}
+```
+
+</APIMethod>
+
+Returns the updated post (with updated `likesCount`). Fails if the user already liked the post.
+
+### Unlike a post
+
+<APIMethod path="/social/posts/unlike" method="POST" requireSession>
+
+```ts
+type unlikePost = {
+  /**
+   * The post ID to unlike.
+   */
+  postId: string = "post-id"
+}
+```
+
+</APIMethod>
+
+Returns the updated post. Fails if the user had not liked the post.
+
+## Hooks
+
+You can run custom logic around social events by passing a `hooks` object to the plugin.
+
+```ts title="auth.ts"
+import { betterAuth } from "better-auth";
+import { socialNetwork } from "better-auth-social";
+
+export const auth = betterAuth({
+  plugins: [
+    socialNetwork({
+      hooks: {
+        onFriendRequestSend: async (friendRequest) => {
+          await notifyUser(friendRequest.receiverId, "New friend request");
+        },
+        onFriendRequestAccept: async (friendRequest) => {
+          await notifyUser(friendRequest.senderId, "Friend request accepted");
+        },
+        onFriendRequestReject: async (friendRequest) => {
+          // ...
+        },
+        onFriendRemove: async ({ userId, friendId }) => {
+          // ...
+        },
+      },
+    }),
+  ],
+});
+```
+
+| Hook | When it runs |
+|------|-------------------------------|
+| `onFriendRequestSend` | After a friend request is created |
+| `onFriendRequestAccept` | After a friend request is accepted and friendship created |
+| `onFriendRequestReject` | After a friend request is rejected |
+| `onFriendRemove` | After a friend is removed (both directions) |
+| `onChatCreate` | After a new direct chat is created |
+| `onChatMessageSend` | After a direct chat message is sent |
+| `onChatMessageDelete` | After a direct chat message is soft-deleted |
+| `onGroupChatCreate` | After a group chat is created |
+| `onGroupChatJoin` | After a member is added to a group chat (or when creating the group) |
+| `onGroupChatLeave` | After the current user leaves or is removed from a group chat |
+| `onGroupChatMessageSend` | After a group chat message is sent |
+| `onGroupChatMessageDelete` | After a group chat message is soft-deleted |
+
+## Options
+
+**allowSelfFriendRequest**: `boolean` — Allow users to send a friend request to themselves. Default: `false`.
+
+**automaticBackFriend**: `boolean` — When a friend request is accepted, create the reverse friendship so both users see each other as friends. Default: `false`.
+
+**allowMultipleGroupChatWithSamePerson**: `boolean` — Allow creating multiple group chats with the exact same set of members. Default: `false`.
+
+**allowAddingUnknownMembersToGroupChat**: `boolean` — Allow adding users to a group chat even if they are not friends with the current user. Default: `false`.
+
+**maxGroupSize**: `number` — Maximum number of members in a group chat (including the creator). Must be ≥ 2. Default: `10`.
+
+**messageDeletionRule**: `'CANT_DELETE' | 'SENDER_ONLY_VISIBLE' | 'VISIBLE'` — How deleted messages are handled:
+- `CANT_DELETE`: Users cannot delete their messages.
+- `SENDER_ONLY_VISIBLE`: Only the sender still sees the deleted message (with placeholder).
+- `VISIBLE`: Everyone sees that the message was deleted (placeholder for all). Default: `'VISIBLE'`.
+
+**deletedMessagePlaceholder**: `string | ((message: GroupChatMessage) => Promise<string>)` — Text (or function returning text) shown for deleted messages. Default: `'Message has been deleted'`.
+
+**hooks**: `SocialNetworkHooks` — Optional hooks for friend, chat, and group chat events (see [Hooks](#hooks)).
+
+## Schema
+
+The social network plugin adds the following tables. Run migrations or add them manually.
+
+### Friend request
+
+Table Name: `friend_request`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the friend request",
+      isPrimaryKey: true,
+    },
+    {
+      name: "senderId",
+      type: "string",
+      description: "The user who sent the request",
+      isForeignKey: true,
+    },
+    {
+      name: "receiverId",
+      type: "string",
+      description: "The user who receives the request",
+      isForeignKey: true,
+    },
+    {
+      name: "status",
+      type: "string",
+      description: "pending, accepted, or rejected",
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the request was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the request was last updated",
+    },
+  ]}
+/>
+
+### Friend
+
+Table Name: `friend`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the friend record",
+      isPrimaryKey: true,
+    },
+    {
+      name: "userId",
+      type: "string",
+      description: "One user in the friendship",
+      isForeignKey: true,
+    },
+    {
+      name: "friendId",
+      type: "string",
+      description: "The other user in the friendship",
+      isForeignKey: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the friendship was created",
+    },
+  ]}
+/>
+
+### Chat
+
+Table Name: `chat`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the chat",
+      isPrimaryKey: true,
+    },
+    {
+      name: "user1Id",
+      type: "string",
+      description: "First participant",
+      isForeignKey: true,
+    },
+    {
+      name: "user2Id",
+      type: "string",
+      description: "Second participant",
+      isForeignKey: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the chat was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the chat was last updated",
+    },
+  ]}
+/>
+
+### Chat message
+
+Table Name: `chat_message`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the message",
+      isPrimaryKey: true,
+    },
+    {
+      name: "content",
+      type: "string",
+      description: "Message content",
+    },
+    {
+      name: "senderId",
+      type: "string",
+      description: "The user who sent the message",
+      isForeignKey: true,
+    },
+    {
+      name: "chatId",
+      type: "string",
+      description: "The chat this message belongs to",
+      isForeignKey: true,
+      isOptional: true,
+    },
+    {
+      name: "deletedAt",
+      type: "Date",
+      description: "When the message was deleted (soft delete)",
+      isOptional: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the message was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the message was last updated",
+    },
+  ]}
+/>
+
+### Group chat
+
+Table Name: `group_chat`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the group chat",
+      isPrimaryKey: true,
+    },
+    {
+      name: "name",
+      type: "string",
+      description: "Group chat name",
+    },
+    {
+      name: "description",
+      type: "string",
+      description: "Optional description",
+      isOptional: true,
+    },
+    {
+      name: "createdById",
+      type: "string",
+      description: "User who created the group",
+      isForeignKey: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the group was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the group was last updated",
+    },
+  ]}
+/>
+
+### Group chat member
+
+Table Name: `group_chat_member`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the membership",
+      isPrimaryKey: true,
+    },
+    {
+      name: "groupChatId",
+      type: "string",
+      description: "The group chat",
+      isForeignKey: true,
+    },
+    {
+      name: "userId",
+      type: "string",
+      description: "The member user",
+      isForeignKey: true,
+    },
+    {
+      name: "role",
+      type: "string",
+      description: "admin or member",
+    },
+    {
+      name: "joinedAt",
+      type: "Date",
+      description: "When the user joined",
+    },
+  ]}
+/>
+
+### Group chat message
+
+Table Name: `group_chat_message`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the message",
+      isPrimaryKey: true,
+    },
+    {
+      name: "content",
+      type: "string",
+      description: "Message content",
+    },
+    {
+      name: "senderId",
+      type: "string",
+      description: "The user who sent the message",
+      isForeignKey: true,
+    },
+    {
+      name: "groupChatId",
+      type: "string",
+      description: "The group chat",
+      isForeignKey: true,
+    },
+    {
+      name: "deletedAt",
+      type: "Date",
+      description: "When the message was deleted (soft delete)",
+      isOptional: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the message was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the message was last updated",
+    },
+  ]}
+/>
+
+### Blocked user
+
+Table Name: `blocked_user`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the block record",
+      isPrimaryKey: true,
+    },
+    {
+      name: "userId",
+      type: "string",
+      description: "The user who blocked",
+      isForeignKey: true,
+    },
+    {
+      name: "blockedUserId",
+      type: "string",
+      description: "The user who is blocked",
+      isForeignKey: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the block was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the record was last updated",
+    },
+  ]}
+/>
+
+### Post
+
+Table Name: `post`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the post",
+      isPrimaryKey: true,
+    },
+    {
+      name: "posterId",
+      type: "string",
+      description: "The user who created the post",
+      isForeignKey: true,
+    },
+    {
+      name: "content",
+      type: "string",
+      description: "Post content",
+    },
+    {
+      name: "likesCount",
+      type: "number",
+      description: "Number of likes",
+    },
+    {
+      name: "commentsCount",
+      type: "number",
+      description: "Number of comments",
+    },
+    {
+      name: "sharesCount",
+      type: "number",
+      description: "Number of shares",
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the post was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the post was last updated",
+    },
+  ]}
+/>
+
+### Post like
+
+Table Name: `post_like`
+
+<DatabaseTable
+  fields={[
+    {
+      name: "id",
+      type: "string",
+      description: "Unique identifier for the like",
+      isPrimaryKey: true,
+    },
+    {
+      name: "postId",
+      type: "string",
+      description: "The post that was liked",
+      isForeignKey: true,
+    },
+    {
+      name: "userId",
+      type: "string",
+      description: "The user who liked",
+      isForeignKey: true,
+    },
+    {
+      name: "createdAt",
+      type: "Date",
+      description: "When the like was created",
+    },
+    {
+      name: "updatedAt",
+      type: "Date",
+      description: "When the record was last updated",
+    },
+  ]}
+/>
