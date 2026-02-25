@@ -47,18 +47,17 @@
     "url": "https://github.com/LaCapitainerie/Better-auth-social/issues"
   },
   "homepage": "https://github.com/LaCapitainerie/Better-auth-social#readme",
-  "peerDependencies": {
-    "better-auth": "^1.4.6"
-  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "better-auth": "^1.4.6",
-    "better-sqlite3": "^12.2.0",
-    "typescript": "^5.9.3"
+    "better-sqlite3": "^12.6.2",
+    "nanostores": "^1.1.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
-    "nanostores": "^1.1.0",
-    "vitest": "^4.0.18",
-    "zod": "^4.1.12"
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "better-auth": "^1.4.6"
   }
 }
