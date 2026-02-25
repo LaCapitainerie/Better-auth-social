@@ -1601,6 +1601,46 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         return ctx.json({ post });
         
       }),
+      deletePost: createAuthEndpoint('/social/posts/delete', {
+        method: "POST",
+        body: z.object({
+          postId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { postId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+        
+        const adapter = ctx.context.adapter;
+
+        const post = await adapter.findOne<Post>({
+          model: 'post',
+          where: [{ field: 'id', value: postId }],
+        });
+        
+        if (!post) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        if (post.posterId !== userId) {
+          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+        }
+
+        await adapter.delete({
+          model: 'post',
+          where: [{ field: 'id', value: postId }, { field: 'posterId', value: userId }],
+        });
+
+        return ctx.json({ success: true });
+        
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
