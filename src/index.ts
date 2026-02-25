@@ -1708,6 +1708,65 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ post: updatedPost });
       }),
+      unlikePost: createAuthEndpoint('/social/posts/unlike', {
+        method: "POST",
+        body: z.object({
+          postId: z.string(),
+        }),
+        response: z.object({
+          post: Post,
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { postId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const post = await adapter.findOne<Post>({
+          model: 'post',
+          where: [{ field: 'id', value: postId }],
+        });
+        
+        if (!post) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        const existingLike = await adapter.findOne<PostLike>({
+          model: 'post_like',
+          where: [{ field: 'postId', value: postId }, { field: 'userId', value: userId }],
+        });
+        
+        if (!existingLike) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+
+        const updatedPost = await adapter.transaction(async (tx) => {
+          await tx.delete({
+            model: 'post_like',
+            where: [{ field: 'postId', value: postId }, { field: 'userId', value: userId }],
+          });
+
+          const likesCount = await tx.count({
+            model: 'post_like',
+            where: [{ field: 'postId', value: postId }],
+          });
+
+          return await tx.update<Post>({
+            model: 'post',
+            where: [{ field: 'id', value: postId }],
+            update: {
+              likesCount,
+            },
+          });
+        });
+
+        return ctx.json({ post: updatedPost });
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
