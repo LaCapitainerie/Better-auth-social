@@ -1542,6 +1542,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
       getPostsFromUser: createAuthEndpoint('/social/posts/from-user', {
         method: "GET",
         query: z.object({
+          page: z.number().optional().default(1),
+          limit: z.number().optional().default(10),
           userId: z.string(),
         }),
         response: z.object({
@@ -1549,7 +1551,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }),
         use: [sessionMiddleware],
       }, async (ctx) => {
-        const { userId: targetUserId } = ctx.query;
+        const { userId: targetUserId, page, limit } = ctx.query;
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
@@ -1561,9 +1563,43 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const posts = await adapter.findMany<Post>({
           model: 'post',
           where: [{ field: 'posterId', value: targetUserId }],
+          limit: limit,
+          offset: (page - 1) * (limit),
         });
 
         return ctx.json({ posts });
+      }),
+      createPost: createAuthEndpoint('/social/posts/create', {
+        method: "POST",
+        body: z.object({
+          content: z.string().min(1).max(1000),
+        }),
+        response: z.object({
+          post: Post,
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { content } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const post = await adapter.create<Post>({
+          model: 'post',
+          data: {
+            posterId: userId,
+            content: content,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        return ctx.json({ post });
+        
       }),
     },
   } satisfies BetterAuthPlugin;
