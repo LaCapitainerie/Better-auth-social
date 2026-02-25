@@ -1,4 +1,7 @@
 # Better Auth Social Network Plugin
+[![Frontend CI](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/vitest.yml/badge.svg)](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/vitest.yml)
+[![Node.js Package](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/npm-publish.yml)
+[![Npm version](https://img.shields.io/npm/v/better-auth-social.svg)](https://www.npmjs.com/package/better-auth-social)
 
 Better-auth Plugin to add social network to your app, this include **friends, friends request, group chat, and private account**.
 
