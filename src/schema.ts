@@ -328,6 +328,58 @@ export const getSchema = () => {
           required: true,
           returned: true,
         },
+        likesCount: {
+          type: "number",
+          required: true,
+          defaultValue: 0,
+          returned: true,
+        },
+        commentsCount: {
+          type: "number",
+          required: true,
+          defaultValue: 0,
+          returned: true,
+        },
+        sharesCount: {
+          type: "number",
+          required: true,
+          defaultValue: 0,
+          returned: true,
+        },
+        createdAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+        updatedAt: {
+          type: "date",
+          required: true,
+          defaultValue: "now",
+          returned: true,
+        },
+      },
+    },
+    post_like: {
+      fields: {
+        postId: {
+          type: "string",
+          required: true,
+          returned: true,
+          references: {
+            model: "post",
+            field: "id",
+          },
+        },
+        userId: {
+          type: "string",
+          required: true,
+          returned: true,
+          references: {
+            model: "user",
+            field: "id",
+          },
+        },
         createdAt: {
           type: "date",
           required: true,

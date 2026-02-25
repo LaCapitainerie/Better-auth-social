@@ -82,8 +82,21 @@ export const Post = z.object({
   id: z.string(),
   posterId: z.string(),
   content: z.string(),
+  likesCount: z.number().int().positive().default(0),
+  commentsCount: z.number().int().positive().default(0),
+  sharesCount: z.number().int().positive().default(0),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
 
 export type Post = z.infer<typeof Post>;
+
+export const PostLike = z.object({
+  id: z.string(),
+  postId: z.string(),
+  userId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type PostLike = z.infer<typeof PostLike>;
