@@ -1,6 +1,6 @@
 {
   "name": "better-auth-social",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A social network plugin for Better Auth with friends, friend requests, chat, and group chat features.",
   "author": "LaCapitainerie",
   "main": "dist/index.js",
@@ -23,18 +23,9 @@
     }
   },
   "scripts": {
-    "build": "next build --turbo",
-    "type:generate": "next typegen .",
-    "clean": "next lint --fix && tsc --noEmit && prettier --write .",
-    "dev": "next dev --turbopack",
-    "format": "prettier --write .",
-    "knip": "knip-bun --config knip.json",
-    "lint": "eslint . --fix",
-    "start": "next start",
-    "ts": "tsc --noEmit",
+    "build": "tsc",
     "test": "vitest",
-    "test:ci": "vitest run",
-    "lint:ci": "eslint ."
+    "test:ci": "vitest run"
   },
   "repository": {
     "type": "git",
