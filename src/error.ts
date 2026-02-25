@@ -24,6 +24,8 @@ export enum ERROR_MESSAGES {
 
   ALREADY_BLOCKED = 'User is already blocked',
   SELF_BLOCK_NOT_ALLOWED = 'You cannot block yourself',
+
+  ALREADY_LIKED = 'Post already liked',
 };
 
 export const errorMessageToCode = (message: string) => message.replace(/ /g, '_').toUpperCase();

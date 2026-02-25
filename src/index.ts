@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { getSchema } from './schema.js';
 import { ERROR_MESSAGES } from './error.js';
 import { SocialNetworkOptions } from './options.js';
-import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post } from './types.js';
+import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post, PostLike } from './types.js';
 
 export const socialNetwork = (options?: SocialNetworkOptions) => {
 
@@ -1593,6 +1593,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           data: {
             posterId: userId,
             content: content,
+            likesCount: 0,
+            commentsCount: 0,
+            sharesCount: 0,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -1640,6 +1643,70 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ success: true });
         
+      }),
+      likePost: createAuthEndpoint('/social/posts/like', {
+        method: "POST",
+        body: z.object({
+          postId: z.string(),
+        }),
+        response: z.object({
+          post: Post,
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { postId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+        }
+
+        const adapter = ctx.context.adapter;
+
+        const post = await adapter.findOne<Post>({
+          model: 'post',
+          where: [{ field: 'id', value: postId }],
+        });
+        
+        if (!post) {
+          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        }
+        
+        const existingLike = await adapter.findOne<PostLike>({
+          model: 'post_like',
+          where: [{ field: 'postId', value: postId }, { field: 'userId', value: userId }],
+        });
+        
+        if (existingLike) {
+          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_LIKED });
+        }
+
+        const updatedPost = await adapter.transaction(async (tx) => {
+          await tx.create<PostLike>({
+            model: 'post_like',
+            data: {
+              postId: postId,
+              userId: userId,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          });
+
+          const likesCount = await tx.count({
+            model: 'post_like',
+            where: [{ field: 'postId', value: postId }],
+          });
+
+          return await tx.update<Post>({
+            model: 'post',
+            where: [{ field: 'id', value: postId }],
+            update: {
+              likesCount,
+            },
+          });
+        });
+
+        return ctx.json({ post: updatedPost });
       }),
     },
   } satisfies BetterAuthPlugin;
