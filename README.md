@@ -1,10 +1,12 @@
 # Better Auth Social Network Plugin
 
-[Better Auth](https://www.better-auth.com/) plugin to add social features to your app: friends, friend requests, private chat, group chats, blocking, and a feed (posts).
+Better-Auth plugin to add social features to your app: friends, friend requests, private chat, group chats, blocking, and a feed (posts).
 
 [![Frontend CI](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/vitest.yml/badge.svg)](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/vitest.yml)
 [![Node.js Package](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/LaCapitainerie/Better-auth-social/actions/workflows/npm-publish.yml)
+[![Npm download](https://img.shields.io/npm/dw/better-auth-social.svg)](https://www.npmjs.com/package/better-auth-social)
 [![Npm version](https://img.shields.io/npm/v/better-auth-social.svg)](https://www.npmjs.com/package/better-auth-social)
+<!--[![Github stars](https://img.shields.io/github/stars/LaCapitainerie/better-auth-social)](https://www.npmjs.com/package/better-auth-social)-->
 
 
 ## Installation
