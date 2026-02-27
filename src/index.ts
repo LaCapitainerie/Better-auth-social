@@ -8,6 +8,25 @@ import { ERROR_MESSAGES } from './error.js';
 import { SocialNetworkOptions } from './options.js';
 import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post, PostLike } from './types.js';
 
+// Source - https://stackoverflow.com/a/64489535
+// Posted by nkitku, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-02-21, License - CC BY-SA 4.0
+
+const groupBy = <T>(array: T[], predicate: (value: T, index: number, array: T[]) => string) =>
+  array.reduce((acc, value, index, array) => {
+    (acc[predicate(value, index, array)] ||= []).push(value);
+    return acc;
+  }, {} as { [key: string]: T[] });
+
+
+const setsAreEqual = <T>(set1: Set<T>, set2: Set<T>): boolean => {
+  if (set1.size !== set2.size) return false;
+  for (const item of set1) {
+    if (!set2.has(item)) return false;
+  }
+  return true;
+}
+
 export const socialNetwork = (options?: SocialNetworkOptions) => {
 
   const OPTIONS = SocialNetworkOptions.parse(options);
@@ -22,37 +41,6 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
     }
     return 'Message has been deleted';
   };
-
-  
-
-
-
-  const zResponseSuccess = z.object({
-    success: z.boolean(),
-  });
-
-
-
-
-  // Source - https://stackoverflow.com/a/64489535
-  // Posted by nkitku, modified by community. See post 'Timeline' for change history
-  // Retrieved 2026-02-21, License - CC BY-SA 4.0
-
-  const groupBy = <T>(array: T[], predicate: (value: T, index: number, array: T[]) => string) =>
-    array.reduce((acc, value, index, array) => {
-      (acc[predicate(value, index, array)] ||= []).push(value);
-      return acc;
-    }, {} as { [key: string]: T[] });
-
-
-  const setsAreEqual = <T>(set1: Set<T>, set2: Set<T>): boolean => {
-    if (set1.size !== set2.size) return false;
-    for (const item of set1) {
-      if (!set2.has(item)) return false;
-    }
-    return true;
-  }
-
 
   return {
     id: 'social-network',
@@ -137,7 +125,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         body: z.object({
           requestId: z.string(),
         }),
-        response: zResponseSuccess,
+        response: z.object({
+          success: z.boolean(),
+        }),
         use: [sessionMiddleware],
       }, async (ctx) => {
         const { requestId } = ctx.body;
@@ -217,7 +207,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         body: z.object({
           requestId: z.string(),
         }),
-        response: zResponseSuccess,
+        response: z.object({
+          success: z.boolean(),
+        }),
         use: [sessionMiddleware],
       }, async (ctx) => {
         const { requestId } = ctx.body;
@@ -337,7 +329,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
       }),
       rejectAllFriendRequests: createAuthEndpoint('/social/friend-request/reject-all', {
         method: "POST",
-        response: zResponseSuccess,
+        response: z.object({
+          success: z.boolean(),
+        }),
         use: [sessionMiddleware],
       }, async (ctx) => {
         const userId = ctx.context.session?.user.id;
