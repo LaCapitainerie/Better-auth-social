@@ -49,15 +49,16 @@
   "homepage": "https://github.com/LaCapitainerie/Better-auth-social#readme",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "better-auth": "^1.5.1",
     "better-sqlite3": "^12.6.2",
-    "better-auth": "^1.4.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
-    "better-auth": "^1.4.6"
+    "better-auth": "^1.5.1"
   },
   "dependencies": {
+    "@better-auth/core": "^1.5.1",
     "zod": "^4.3.6"
   }
 }

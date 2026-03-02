@@ -1,22 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { socialNetwork } from "../../../src/index.ts";
-import { socialNetworkClient } from "../../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
 
-describe("API - Get or Create Chat", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowSelfFriendRequest: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+import { socialNetwork } from "../../../src/index.ts";
+import { socialNetworkClient } from "../../../src/client.ts";
+
+describe("API - Get Chats", async () => {
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowSelfFriendRequest: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     it("should return an empty list if user doesn't have any chat", async () => {
       const response = await auth.api.getChats({
         headers,
@@ -37,14 +42,15 @@ describe("API - Get or Create Chat", async () => {
       expect(friendRequest).toBeDefined();
       expect(friendRequest.senderId).toBe(user.id);
       expect(friendRequest.receiverId).toBe(user.id);
-      expect(friendRequest.status).toBe('pending');
+      expect(friendRequest.status).toBe("pending");
 
-      const { success: acceptFriendRequestSuccess } = await auth.api.acceptFriendRequest({
-        body: {
-          requestId: friendRequest.id,
-        },
-        headers,
-      });
+      const { success: acceptFriendRequestSuccess } =
+        await auth.api.acceptFriendRequest({
+          body: {
+            requestId: friendRequest.id,
+          },
+          headers,
+        });
       expect(acceptFriendRequestSuccess).toBe(true);
 
       const { chat } = await auth.api.getOrCreateChat({

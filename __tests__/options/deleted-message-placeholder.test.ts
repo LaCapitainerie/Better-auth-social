@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { socialNetwork } from "../../src/index.ts";
-import { socialNetworkClient } from "../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
-import { ERROR_MESSAGES, errorMessageToCode } from "../../src/error.ts";
+
+import { socialNetwork } from "../../src/index.ts";
 import { GroupChatMessage } from "../../src/types.ts";
+import { socialNetworkClient } from "../../src/client.ts";
 
 describe("Options - Deleted Message Placeholder", async () => {
   describe("with deletedMessagePlaceholder set to a string", async () => {

@@ -1,23 +1,28 @@
 import { describe, it, expect } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - Get Group Chats", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowSelfFriendRequest: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowSelfFriendRequest: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     it("should raise an error if group chat is not found", async () => {
       const response = await auth.api.leaveGroupChat({
         body: {
@@ -27,8 +32,8 @@ describe("API - Get Group Chats", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.message);
     });
 
     it("should return success true if group chat is found and user belong to it", async () => {
@@ -86,9 +91,8 @@ describe("API - Get Group Chats", async () => {
       });
 
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
-
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.message);
     });
   });
 });

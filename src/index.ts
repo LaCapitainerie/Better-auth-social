@@ -1,10 +1,11 @@
 import { mergeSchema, User } from 'better-auth/db';
 import { BetterAuthPlugin, Where } from 'better-auth';
-import { APIError, createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
+import { createAuthEndpoint, sessionMiddleware } from 'better-auth/api';
+import { APIError } from "@better-auth/core/error";
 import { z } from 'zod';
 
 import { getSchema } from './schema.js';
-import { ERROR_MESSAGES } from './error.js';
+import { SOCIAL_NETWORK_ERROR_CODES } from './error.js';
 import { SocialNetworkOptions } from './options.js';
 import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post, PostLike } from './types.js';
 
@@ -45,11 +46,12 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
   return {
     id: 'social-network',
     schema: mergeSchema(getSchema()),
+    $ERROR_CODES: SOCIAL_NETWORK_ERROR_CODES,
     endpoints: {
       sendFriendRequest: createAuthEndpoint('/social/friend-request/send', {
         method: "POST",
         body: z.object({
-          receiverId: z.string(),
+          receiverId: z.string()
         }),
         response: z.object({
           friendRequest: FriendRequest,
@@ -61,18 +63,22 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+        
+        if (!receiverId || receiverId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_RECEIVER_ID_REQUIRED);
         }
 
         if (!OPTIONS.allowSelfFriendRequest && userId === receiverId) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_REQUEST_NOT_ALLOWED });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.SELF_REQUEST_NOT_ALLOWED);
         }
 
         const { adapter, internalAdapter } = ctx.context;
 
         const foreignUser = await internalAdapter.findUserById(receiverId);
         if (!foreignUser) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.NOT_FOUND);
         }
 
         // Check if users are already friends
@@ -85,7 +91,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (existingFriend) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_FRIENDS });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_ALREADY_FRIENDS);
         }
 
         // Check if there's already a pending request
@@ -99,7 +105,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (existingRequest) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_SENT });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_ALREADY_SENT);
         }
 
         const friendRequest = await adapter.create<FriendRequest>({
@@ -134,7 +140,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!requestId || requestId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -148,11 +158,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!friendRequest) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_FOUND);
         }
 
         if (friendRequest.status !== 'pending') {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.NOT_PENDING });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_PENDING);
         }
 
         const updatedRequest = await adapter.transaction(async (tx) => {
@@ -166,7 +176,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           });
 
           if (!updatedRequest) {
-            throw new APIError('INTERNAL_SERVER_ERROR', { message: ERROR_MESSAGES.FAILED_TO_UPDATE });
+            throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_FAILED_TO_UPDATE);
           }
 
           // Create friend relationship (both directions)
@@ -216,7 +226,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!requestId || requestId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -230,11 +244,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!friendRequest) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_FOUND);
         }
 
         if (friendRequest.status !== 'pending') {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.NOT_PENDING });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_PENDING);
         }
 
         const updatedRequest = await adapter.transaction(async (tx) => {
@@ -248,7 +262,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           });
 
           if (!updatedRequest) {
-            throw new APIError('INTERNAL_SERVER_ERROR', { message: ERROR_MESSAGES.FAILED_TO_UPDATE });
+            throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_FAILED_TO_UPDATE);
           }
 
           return updatedRequest;
@@ -275,7 +289,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -308,7 +322,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -337,7 +351,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -370,7 +384,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -398,14 +412,18 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!friendId || friendId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_ID_REQUIRED);
         }
 
         const { adapter, internalAdapter } = ctx.context;
 
         const foreignUser = await internalAdapter.findUserById(friendId);
         if (!foreignUser) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND);
         }
 
         await adapter.transaction(async (tx) => {
@@ -418,7 +436,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             ]
           });
           if (!isFriend) {
-            throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.NOT_FRIEND });
+            throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND);
           }
 
           // Remove both directions
@@ -468,14 +486,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!friendId || friendId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
-
-        if (!friendId) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
-        }
 
         const isFriend = await adapter.findOne<Friend>({
           model: 'friend',
@@ -504,14 +522,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!friendId || friendId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
-
-        if (!friendId) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
-        }
 
         // Check if users are friends
         const isFriend = await adapter.findOne<Friend>({
@@ -523,7 +541,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!isFriend) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.NOT_FRIENDS });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND);
         }
 
         // Check if chat already exists
@@ -568,7 +586,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -604,7 +622,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -616,11 +634,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!chat) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
 
         if (chat.user1Id !== userId && chat.user2Id !== userId) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
 
         const messages = await adapter.findMany<ChatMessage>({
@@ -655,11 +673,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!chatId || chatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_CHAT_ID_REQUIRED);
         }
 
         if (!content) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_CONTENT_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -671,11 +693,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!chat) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
 
         if (chat.user1Id !== userId && chat.user2Id !== userId) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
 
         const message = await adapter.create<ChatMessage>({
@@ -709,30 +731,43 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!chatMessageId || chatMessageId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
+
         const chatMessage = await adapter.findOne<ChatMessage>({
           model: 'chat_message',
           where: [{ field: 'id', value: chatMessageId, connector: 'AND' }]
         });
 
-        if (!chatMessage || chatMessage.deletedAt !== null) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        if (!chatMessage) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_NOT_FOUND);
         }
 
         if (chatMessage.senderId !== userId) {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN);
         }
 
-        await adapter.update({
+        if (chatMessage.deletedAt !== null) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_ALREADY_DELETED);
+        }
+
+        const updatedChatMessage = await adapter.update<ChatMessage>({
           model: 'chat_message',
           where: [{ field: 'id', value: chatMessageId }],
           update: {
             deletedAt: new Date(),
           }
         });
+
+        if (!updatedChatMessage) {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_FAILED_TO_UPDATE);
+        }
 
         // Call hook
         if (hooks.onChatMessageDelete) {
@@ -760,19 +795,19 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         if (!name) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NAME_REQUIRED);
         }
 
         if (memberIds.length === 0) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_IDS_REQUIRED);
         }
 
         if (memberIds.length +1 > OPTIONS.maxGroupSize) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.TOO_LARGE });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.MAX_GROUP_SIZE);
         }
 
         const adapter = ctx.context.adapter;
@@ -797,7 +832,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             const groupChatMembersIdsSet = new Set(groupChatMembers.map(gcm => gcm.userId));
 
             if (setsAreEqual(groupChatMembersIdsSet, membersIdsSet)) {
-              throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.MULTIPLE_GROUP_CHAT_WITH_SAME_PERSON });
+              throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.MULTIPLE_GROUP_CHAT_WITH_SAME_PERSON);
             }
           }
         }
@@ -835,7 +870,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
                 where: [{ field: 'userId', value: userId }, { field: 'friendId', value: memberId }]
               });
               if (!friend) {
-                throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+                throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.ADDING_UNKNOWN_MEMBERS_TO_GROUP_CHAT);
               }
             }
 
@@ -848,7 +883,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
                 joinedAt: new Date(),
               }
             }).catch(() => {
-              throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+              throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_ADD_MEMBER);
             });
           }));
 
@@ -883,7 +918,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -918,11 +953,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        if (groupChatId === undefined) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -936,7 +971,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!membership) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         await adapter.delete({
@@ -966,11 +1001,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }),
         use: [sessionMiddleware],
       }, async (ctx) => {
-        const { id } = ctx.body;
+        const { id, name, description } = ctx.body;
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!id || id.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -984,11 +1023,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!membership) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         if (membership.role !== 'admin') {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
         }
 
         const groupChat = await adapter.findOne<GroupChat>({
@@ -997,12 +1036,12 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!groupChat) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         const updatedGroupChatData = {
-          name: ctx.body.name,
-          description: ctx.body.description,
+          name: name,
+          description: description,
         };
 
         const updatedGroupChat = await adapter.update<GroupChat>({
@@ -1010,6 +1049,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           where: [{ field: 'id', value: id }],
           update: updatedGroupChatData,
         });
+
+        if (!updatedGroupChat) {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_UPDATE);
+        }
 
         return ctx.json({ updatedGroupChat });
       }),
@@ -1029,7 +1072,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1043,7 +1090,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!isMember) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         const members = await adapter.findMany<GroupChatMember>({
@@ -1068,7 +1115,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
+        }
+
+        if (!newMemberId || newMemberId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1079,7 +1134,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!groupChat) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
 
@@ -1089,7 +1144,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             where: [{ field: 'userId', value: userId }, { field: 'friendId', value: newMemberId }]
           });
           if (!friend) {
-            throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+            throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.ADDING_UNKNOWN_MEMBERS_TO_GROUP_CHAT);
           }
         }
 
@@ -1098,7 +1153,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           where: [{ field: 'groupChatId', value: groupChatId }]
         });
         if (groupChatMembers.length >= OPTIONS.maxGroupSize) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.MAX_SIZE_REACHED });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.MAX_GROUP_SIZE);
         }
 
         // Check if user is admin or member
@@ -1111,11 +1166,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!membership) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         if (membership.role !== 'admin') {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
         }
 
         // Check if new member is already in the group
@@ -1128,17 +1183,19 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (existingMember) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_MEMBER });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ALREADY_MEMBER);
         }
 
         await adapter.create<GroupChatMember>({
           model: 'group_chat_member',
-          data: {
+          data: { 
             groupChatId: groupChatId,
             userId: newMemberId,
             role: 'member',
             joinedAt: new Date(),
           }
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_ADD_MEMBER);
         });
 
         // Call hook
@@ -1163,7 +1220,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
+        }
+
+        if (!memberIdToRemove || memberIdToRemove.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1178,11 +1243,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!membership) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         if (membership.role !== 'admin') {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
         }
 
         // Don't allow removing the creator
@@ -1192,11 +1257,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!groupChat) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN);
         }
 
         if (groupChat.createdById === memberIdToRemove) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_CREATOR_NOT_ALLOWED_TO_REMOVE);
         }
 
         await adapter.delete({
@@ -1205,6 +1270,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             { field: 'groupChatId', value: groupChatId, connector: 'AND' },
             { field: 'id', value: memberIdToRemove, connector: 'AND' }
           ]
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_REMOVE_MEMBER);
         });
 
         // Call hook
@@ -1233,7 +1300,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1248,7 +1319,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!membership) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         const where: Where[] = [{ field: 'groupChatId', value: groupChatId, operator: 'eq', connector: 'AND' }];
@@ -1296,11 +1367,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         if (!content || content.length === 0) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.BAD_REQUEST });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_CONTENT_REQUIRED);
+        }
+
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1315,7 +1390,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!membership) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
         const message = await adapter.create<GroupChatMessage>({
@@ -1326,6 +1401,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             groupChatId: groupChatId,
             deletedAt: null,
           }
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_SEND_MESSAGE);
         });
 
         // Call hook
@@ -1348,41 +1425,62 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
       }, async (ctx) => {
 
         if (OPTIONS.messageDeletionRule === 'CANT_DELETE') {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.MESSAGE_DELETION_RULE_CANT_DELETE);
         }
 
         const { groupChatId, messageId } = ctx.body;
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!groupChatId || groupChatId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
+        }
+
+        if (!messageId || messageId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
 
-        const message = await adapter.findOne<GroupChatMessage>({
-          model: 'group_chat_message',
-          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChatId }]
+        const groupChat = await adapter.findOne<GroupChat>({
+          model: 'group_chat',
+          where: [{ field: 'id', value: groupChatId }]
         });
 
-        if (!message || message.deletedAt !== null) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+        if (!groupChat) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
+        }
+
+        const message = await adapter.findOne<GroupChatMessage>({
+          model: 'group_chat_message',
+          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChat.id }]
+        });
+
+        if (!message) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_NOT_FOUND);
         }
 
         if (message.senderId !== userId) {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_NOT_AUTHOR);
+        }
+
+        if (message.deletedAt !== null) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_ALREADY_DELETED);
         }
 
         const updatedMessage = await adapter.update<GroupChatMessage>({
           model: 'group_chat_message',
-          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChatId }],
+          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChat.id }],
           update: {
             deletedAt: new Date(),
           }
         });
 
         if (!updatedMessage) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_DELETE_MESSAGE);
         }
 
         // Call hook
@@ -1405,7 +1503,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1431,18 +1529,22 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!blockedUserId || blockedUserId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_BLOCKED_USER_ID_REQUIRED);
         }
 
         if (userId === blockedUserId) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_BLOCK_NOT_ALLOWED });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_SELF_BLOCK_NOT_ALLOWED);
         }
 
         const { adapter, internalAdapter } = ctx.context;
 
         const foreignUser = await internalAdapter.findUserById(blockedUserId);
         if (!foreignUser) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN);
         }
 
         // Check if user is already blocked
@@ -1452,7 +1554,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (existingBlockedUser) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_BLOCKED });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_ALREADY_BLOCKED);
         }
 
         const blockedUser = await adapter.create<BlockedUser>({
@@ -1461,6 +1563,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             userId: userId,
             blockedUserId: blockedUserId,
           }
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_FAILED_TO_BLOCK);
         });
 
         return ctx.json({ blockedUser });
@@ -1479,11 +1583,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!blockedUserId || blockedUserId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_BLOCKED_USER_ID_REQUIRED);
         }
 
         if (userId === blockedUserId) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.SELF_BLOCK_NOT_ALLOWED });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_SELF_BLOCK_NOT_ALLOWED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1494,12 +1602,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (!blockedUser) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_NOT_FOUND);
         }
 
         await adapter.delete({
           model: 'blocked_user',
           where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_FAILED_TO_UNBLOCK);
         });
 
         return ctx.json({ success: true });
@@ -1518,7 +1628,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!blockedUserId || blockedUserId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_BLOCKED_USER_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1549,7 +1663,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!targetUserId || targetUserId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_TARGET_USER_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1566,7 +1684,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
       createPost: createAuthEndpoint('/social/posts/create', {
         method: "POST",
         body: z.object({
-          content: z.string().min(1).max(1000),
+          content: z.string(),
         }),
         response: z.object({
           post: Post,
@@ -1577,7 +1695,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!content || content.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_CONTENT_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1593,6 +1715,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             createdAt: new Date(),
             updatedAt: new Date(),
           },
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_CREATE);
         });
 
         return ctx.json({ post });
@@ -1612,9 +1736,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
         
+        if (!postId || postId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
+        }
+
         const adapter = ctx.context.adapter;
 
         const post = await adapter.findOne<Post>({
@@ -1623,16 +1751,18 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
         
         if (!post) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
 
         if (post.posterId !== userId) {
-          throw new APIError('FORBIDDEN', { message: ERROR_MESSAGES.FORBIDDEN });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
 
         await adapter.delete({
           model: 'post',
           where: [{ field: 'id', value: postId }, { field: 'posterId', value: userId }],
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_DELETE);
         });
 
         return ctx.json({ success: true });
@@ -1652,7 +1782,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!postId || postId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1663,7 +1797,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
         
         if (!post) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
         
         const existingLike = await adapter.findOne<PostLike>({
@@ -1672,7 +1806,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
         
         if (existingLike) {
-          throw new APIError('BAD_REQUEST', { message: ERROR_MESSAGES.ALREADY_LIKED });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_LIKED);
         }
 
         const updatedPost = await adapter.transaction(async (tx) => {
@@ -1698,7 +1832,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
               likesCount,
             },
           });
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_LIKE);
         });
+
+        if (!updatedPost) {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_UPDATE);
+        }
 
         return ctx.json({ post: updatedPost });
       }),
@@ -1716,7 +1856,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
-          throw new APIError('UNAUTHORIZED', { message: ERROR_MESSAGES.UNAUTHORIZED });
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!postId || postId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
         }
 
         const adapter = ctx.context.adapter;
@@ -1727,7 +1871,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
         
         if (!post) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
 
         const existingLike = await adapter.findOne<PostLike>({
@@ -1736,7 +1880,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
         
         if (!existingLike) {
-          throw new APIError('NOT_FOUND', { message: ERROR_MESSAGES.NOT_FOUND });
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_UNLIKED);
         }
 
         const updatedPost = await adapter.transaction(async (tx) => {
@@ -1757,7 +1901,13 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
               likesCount,
             },
           });
+        }).catch(() => {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_UNLIKE);
         });
+
+        if (!updatedPost) {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_UPDATE);
+        }
 
         return ctx.json({ post: updatedPost });
       }),

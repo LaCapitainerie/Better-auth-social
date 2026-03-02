@@ -1,34 +1,39 @@
 import { describe, it, expect } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - Get or Create Chat", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowSelfFriendRequest: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowSelfFriendRequest: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     it("should raise an error if foreignUser is not a friend", async () => {
       const response = await auth.api.getOrCreateChat({
         query: {
-          friendId: 'foreign-user-id',
+          friendId: "foreign-user-id",
         },
         headers,
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FRIENDS));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FRIENDS);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND.message);
     });
 
     it("should return Chat ref if foreignUser is a friend and no chat exist with him", async () => {
@@ -41,14 +46,15 @@ describe("API - Get or Create Chat", async () => {
       expect(friendRequest).toBeDefined();
       expect(friendRequest.senderId).toBe(user.id);
       expect(friendRequest.receiverId).toBe(user.id);
-      expect(friendRequest.status).toBe('pending');
+      expect(friendRequest.status).toBe("pending");
 
-      const { success: acceptFriendRequestSuccess } = await auth.api.acceptFriendRequest({
-        body: {
-          requestId: friendRequest.id,
-        },
-        headers,
-      });
+      const { success: acceptFriendRequestSuccess } =
+        await auth.api.acceptFriendRequest({
+          body: {
+            requestId: friendRequest.id,
+          },
+          headers,
+        });
       expect(acceptFriendRequestSuccess).toBe(true);
 
       const response = await auth.api.getOrCreateChat({

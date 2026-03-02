@@ -1,22 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { socialNetwork } from "../../../src/index.ts";
-import { socialNetworkClient } from "../../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
 
+import { socialNetwork } from "../../../src/index.ts";
+import { socialNetworkClient } from "../../../src/client.ts";
+
 describe("API - Get Group Chats", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowSelfFriendRequest: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowSelfFriendRequest: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     it("should return an empty list if user does not have group chat", async () => {
       const response = await auth.api.getGroupChats({
         headers,

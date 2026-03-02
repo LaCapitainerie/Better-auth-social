@@ -1,16 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { socialNetwork } from "../../../src/index.ts";
-import { socialNetworkClient } from "../../../src/client.ts";
 import { getTestInstance } from "better-auth/test";
 
+import { socialNetwork } from "../../../src/index.ts";
+import { socialNetworkClient } from "../../../src/client.ts";
+
 describe("API - getPostsFromUser", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork()],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [socialNetwork()],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
