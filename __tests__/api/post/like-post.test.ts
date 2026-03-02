@@ -1,17 +1,21 @@
 import { describe, it, expect } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - likePost", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork()],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [socialNetwork()],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
@@ -24,8 +28,8 @@ describe("API - likePost", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.message);
     });
 
     it("should return success true if post is found and like counter updated", async () => {
@@ -80,8 +84,8 @@ describe("API - likePost", async () => {
         asResponse: true,
       });
       const bodySecondLike = await responseSecondLike.json();
-      expect(bodySecondLike.code).toBe(errorMessageToCode(ERROR_MESSAGES.ALREADY_LIKED));
-      expect(bodySecondLike.message).toBe(ERROR_MESSAGES.ALREADY_LIKED);
+      expect(bodySecondLike.code).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_LIKED.code);
+      expect(bodySecondLike.message).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_LIKED.message);
     });
 
     it("should return an updated likes count if post is liked by a foreign user", async () => {
@@ -98,13 +102,14 @@ describe("API - likePost", async () => {
       expect(post.updatedAt).toBeDefined();
       expect(post.likesCount).toBe(0);
 
-      const { user: foreignUser, token: tokenForeignUser } = await auth.api.signUpEmail({
-        body: {
-          name: "Foreign User",
-          email: "foreign-user@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser, token: tokenForeignUser } =
+        await auth.api.signUpEmail({
+          body: {
+            name: "Foreign User",
+            email: "foreign-user@example.com",
+            password: "password",
+          },
+        });
 
       expect(foreignUser).toBeDefined();
       expect(tokenForeignUser).toBeDefined();

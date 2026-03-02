@@ -1,21 +1,23 @@
 import { describe, it, expect } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
 
 describe("API - isBlocked", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork()],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [socialNetwork()],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     it("should return false if user is not found", async () => {
       const response = await auth.api.isBlocked({
         query: {
@@ -41,13 +43,14 @@ describe("API - isBlocked", async () => {
     });
 
     it("should return true if user is blocked", async () => {
-      const { user: foreignUser, token: tokenForeignUser } = await auth.api.signUpEmail({
-        body: {
-          name: "Foreign User",
-          email: "foreign-user@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser, token: tokenForeignUser } =
+        await auth.api.signUpEmail({
+          body: {
+            name: "Foreign User",
+            email: "foreign-user@example.com",
+            password: "password",
+          },
+        });
       expect(foreignUser).toBeDefined();
       expect(tokenForeignUser).toBeDefined();
 

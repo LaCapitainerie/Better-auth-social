@@ -1,33 +1,38 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
-import { beforeAll } from "vitest";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - updateGroupChat", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowAddingUnknownMembersToGroupChat: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowAddingUnknownMembersToGroupChat: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
 
   await runWithUser(async (headers) => {
-
     beforeAll(async () => {
-      const { user: foreignUser, token: tokenForeignUser } = await auth.api.signUpEmail({
-        body: {
-          name: "Foreign User",
-          email: "foreign-user@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser, token: tokenForeignUser } =
+        await auth.api.signUpEmail({
+          body: {
+            name: "Foreign User",
+            email: "foreign-user@example.com",
+            password: "password",
+          },
+        });
       expect(foreignUser).toBeDefined();
       expect(tokenForeignUser).toBeDefined();
 
@@ -53,20 +58,21 @@ describe("API - updateGroupChat", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.message);
     });
 
     it("should raise an error if group chat is found but user is not an admin of it", async () => {
-      const { user: foreignUser, token: tokenForeignUser } = await auth.api.signInEmail({
-        body: {
-          email: "foreign-user@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser, token: tokenForeignUser } =
+        await auth.api.signInEmail({
+          body: {
+            email: "foreign-user@example.com",
+            password: "password",
+          },
+        });
       expect(foreignUser).toBeDefined();
       expect(tokenForeignUser).toBeDefined();
-      
+
       const { groupChats } = await auth.api.getGroupChats({
         headers,
       });
@@ -85,8 +91,8 @@ describe("API - updateGroupChat", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.FORBIDDEN));
-      expect(body.message).toBe(ERROR_MESSAGES.FORBIDDEN);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN.message);
     });
 
     it("should return the updated group chat if group chat is found and user is an admin of it", async () => {
@@ -100,7 +106,7 @@ describe("API - updateGroupChat", async () => {
       expect(groupChat.name).toBe("Group Chat");
       expect(groupChat.createdById).toBe(user.id);
       expect(groupChat.description).toBe(null);
-      
+
       const response = await auth.api.updateGroupChat({
         body: {
           id: groupChat.id,
@@ -113,7 +119,9 @@ describe("API - updateGroupChat", async () => {
       const body = await response.json();
       expect(body.updatedGroupChat).toBeDefined();
       expect(body.updatedGroupChat.name).toBe("Updated Group Chat");
-      expect(body.updatedGroupChat.description).toBe("Updated group chat description");
+      expect(body.updatedGroupChat.description).toBe(
+        "Updated group chat description",
+      );
       expect(body.updatedGroupChat.createdById).toBe(user.id);
     });
   });

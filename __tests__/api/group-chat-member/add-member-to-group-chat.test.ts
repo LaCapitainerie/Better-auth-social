@@ -1,114 +1,122 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - Add Member to Group Chat", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowSelfFriendRequest: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowSelfFriendRequest: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     beforeAll(async () => {
-      const { user: foreignUser1, token: tokenForeignUser1 } = await auth.api.signUpEmail({
-        body: {
-          name: "Foreign User 1",
-          email: "foreign-user1@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser1, token: tokenForeignUser1 } =
+        await auth.api.signUpEmail({
+          body: {
+            name: "Foreign User 1",
+            email: "foreign-user1@example.com",
+            password: "password",
+          },
+        });
       expect(foreignUser1).toBeDefined();
       expect(tokenForeignUser1).toBeDefined();
 
-      const { friendRequest: friendRequest1 } = await auth.api.sendFriendRequest({
-        body: {
-          receiverId: foreignUser1.id,
-        },
-        headers,
-      });
-      
+      const { friendRequest: friendRequest1 } =
+        await auth.api.sendFriendRequest({
+          body: {
+            receiverId: foreignUser1.id,
+          },
+          headers,
+        });
+
       expect(friendRequest1).toBeDefined();
       expect(friendRequest1.senderId).toBe(user.id);
       expect(friendRequest1.receiverId).toBe(foreignUser1.id);
-      expect(friendRequest1.status).toBe('pending');
+      expect(friendRequest1.status).toBe("pending");
 
-      const { success: acceptFriendRequestSuccess1 } = await auth.api.acceptFriendRequest({
-        body: {
-          requestId: friendRequest1.id,
-        },
-        headers: {
-          Authorization: `Bearer ${tokenForeignUser1?.toString()}`,
-        },
-      });
+      const { success: acceptFriendRequestSuccess1 } =
+        await auth.api.acceptFriendRequest({
+          body: {
+            requestId: friendRequest1.id,
+          },
+          headers: {
+            Authorization: `Bearer ${tokenForeignUser1?.toString()}`,
+          },
+        });
       expect(acceptFriendRequestSuccess1).toBe(true);
 
-
-
-
-      const { user: foreignUser2, token: tokenForeignUser2 } = await auth.api.signUpEmail({
-        body: {
-          name: "Foreign User 2",
-          email: "foreign-user2@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser2, token: tokenForeignUser2 } =
+        await auth.api.signUpEmail({
+          body: {
+            name: "Foreign User 2",
+            email: "foreign-user2@example.com",
+            password: "password",
+          },
+        });
       expect(foreignUser2).toBeDefined();
       expect(tokenForeignUser2).toBeDefined();
 
-      const { friendRequest: friendRequest2 } = await auth.api.sendFriendRequest({
-        body: {
-          receiverId: foreignUser2.id,
-        },
-        headers,
-      });
-      
+      const { friendRequest: friendRequest2 } =
+        await auth.api.sendFriendRequest({
+          body: {
+            receiverId: foreignUser2.id,
+          },
+          headers,
+        });
+
       expect(friendRequest2).toBeDefined();
       expect(friendRequest2.senderId).toBe(user.id);
       expect(friendRequest2.receiverId).toBe(foreignUser2.id);
-      expect(friendRequest2.status).toBe('pending');
+      expect(friendRequest2.status).toBe("pending");
 
-      const { success: acceptFriendRequestSuccess2 } = await auth.api.acceptFriendRequest({
-        body: {
-          requestId: friendRequest2.id,
-        },
-        headers: {
-          Authorization: `Bearer ${tokenForeignUser2?.toString()}`,
-        },
-      });
+      const { success: acceptFriendRequestSuccess2 } =
+        await auth.api.acceptFriendRequest({
+          body: {
+            requestId: friendRequest2.id,
+          },
+          headers: {
+            Authorization: `Bearer ${tokenForeignUser2?.toString()}`,
+          },
+        });
       expect(acceptFriendRequestSuccess2).toBe(true);
 
-
-
-      const { friendRequest: friendRequest3 } = await auth.api.sendFriendRequest({
-        body: {
-          receiverId: foreignUser2.id,
-        },
-        headers: {
-          Authorization: `Bearer ${tokenForeignUser1?.toString()}`,
-        },
-      });
+      const { friendRequest: friendRequest3 } =
+        await auth.api.sendFriendRequest({
+          body: {
+            receiverId: foreignUser2.id,
+          },
+          headers: {
+            Authorization: `Bearer ${tokenForeignUser1?.toString()}`,
+          },
+        });
       expect(friendRequest3).toBeDefined();
       expect(friendRequest3.senderId).toBe(foreignUser1.id);
       expect(friendRequest3.receiverId).toBe(foreignUser2.id);
-      expect(friendRequest3.status).toBe('pending');
+      expect(friendRequest3.status).toBe("pending");
 
-      const { success: acceptFriendRequestSuccess3 } = await auth.api.acceptFriendRequest({
-        body: {
-          requestId: friendRequest3.id,
-        },
-        headers: {
-          Authorization: `Bearer ${tokenForeignUser2?.toString()}`,
-        },
-      });
+      const { success: acceptFriendRequestSuccess3 } =
+        await auth.api.acceptFriendRequest({
+          body: {
+            requestId: friendRequest3.id,
+          },
+          headers: {
+            Authorization: `Bearer ${tokenForeignUser2?.toString()}`,
+          },
+        });
       expect(acceptFriendRequestSuccess3).toBe(true);
 
       const { isFriend } = await auth.api.isFriend({
@@ -156,17 +164,18 @@ describe("API - Add Member to Group Chat", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.ALREADY_MEMBER));
-      expect(body.message).toBe(ERROR_MESSAGES.ALREADY_MEMBER);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ALREADY_MEMBER.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ALREADY_MEMBER.message);
     });
 
     it("should raise an error if user is not an admin of the group", async () => {
-      const { user: foreignUser1, token: tokenForeignUser1 } = await auth.api.signInEmail({
-        body: {
-          email: "foreign-user1@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser1, token: tokenForeignUser1 } =
+        await auth.api.signInEmail({
+          body: {
+            email: "foreign-user1@example.com",
+            password: "password",
+          },
+        });
       expect(foreignUser1).toBeDefined();
       expect(tokenForeignUser1).toBeDefined();
 
@@ -195,8 +204,8 @@ describe("API - Add Member to Group Chat", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.FORBIDDEN));
-      expect(body.message).toBe(ERROR_MESSAGES.FORBIDDEN);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN.message);
     });
 
     it("should return success true if member was added to the group", async () => {
@@ -243,9 +252,15 @@ describe("API - Add Member to Group Chat", async () => {
       });
       expect(updatedMembers).toBeDefined();
       expect(updatedMembers.length).toBe(3);
-      expect(updatedMembers.find(m => m.userId === foreignUser1)?.role).toBe('member');
-      expect(updatedMembers.find(m => m.userId === foreignUser2)?.role).toBe('member');
-      expect(updatedMembers.find(m => m.userId === user.id)?.role).toBe('admin');
+      expect(updatedMembers.find((m) => m.userId === foreignUser1)?.role).toBe(
+        "member",
+      );
+      expect(updatedMembers.find((m) => m.userId === foreignUser2)?.role).toBe(
+        "member",
+      );
+      expect(updatedMembers.find((m) => m.userId === user.id)?.role).toBe(
+        "admin",
+      );
     });
   });
 });

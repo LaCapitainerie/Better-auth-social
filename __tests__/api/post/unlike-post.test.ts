@@ -1,17 +1,21 @@
 import { describe, it, expect } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - unlikePost", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork()],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [socialNetwork()],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
@@ -24,11 +28,11 @@ describe("API - unlikePost", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.message);
     });
 
-    it("should raise an error if post is found but not liked by the user", async () => {
+    it("should raise an error if post is found but already unliked by the user", async () => {
       const { post } = await auth.api.createPost({
         body: {
           content: "Hello, world!",
@@ -45,11 +49,11 @@ describe("API - unlikePost", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_UNLIKED.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_UNLIKED.message);
     });
 
-    it("should return an updated likes count if post is found and liked by the user", async () => {
+    it("should return an updated likes count if post is found and already liked by the user", async () => {
       const { post } = await auth.api.createPost({
         body: {
           content: "Hello, world!",
@@ -85,7 +89,7 @@ describe("API - unlikePost", async () => {
       expect(bodyUnlike.post.likesCount).toBe(0);
     });
 
-    it("should return an updated likes count if post is liked by a foreign user", async () => {
+    it("should return an updated likes count if post is already liked by a foreign user", async () => {
       const { post } = await auth.api.createPost({
         body: {
           content: "Hello, world!",
@@ -99,13 +103,14 @@ describe("API - unlikePost", async () => {
       expect(post.updatedAt).toBeDefined();
       expect(post.likesCount).toBe(0);
 
-      const { user: foreignUser, token: tokenForeignUser } = await auth.api.signUpEmail({
-        body: {
-          name: "Foreign User",
-          email: "foreign-user@example.com",
-          password: "password",
-        },
-      });
+      const { user: foreignUser, token: tokenForeignUser } =
+        await auth.api.signUpEmail({
+          body: {
+            name: "Foreign User",
+            email: "foreign-user@example.com",
+            password: "password",
+          },
+        });
 
       expect(foreignUser).toBeDefined();
       expect(tokenForeignUser).toBeDefined();

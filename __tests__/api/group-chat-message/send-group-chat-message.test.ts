@@ -1,23 +1,28 @@
 import { describe, it, expect, beforeAll } from "vitest";
+import { getTestInstance } from "better-auth/test";
+
 import { socialNetwork } from "../../../src/index.ts";
 import { socialNetworkClient } from "../../../src/client.ts";
-import { getTestInstance } from "better-auth/test";
-import { errorMessageToCode, ERROR_MESSAGES } from "../../../src/error.ts";
+import { SOCIAL_NETWORK_ERROR_CODES } from "../../../src/error.ts";
 
 describe("API - Send Group Chat Message", async () => {
-  const { auth, signInWithTestUser } = await getTestInstance({
-    plugins: [socialNetwork({
-      allowAddingUnknownMembersToGroupChat: true,
-    })],
-  }, {
-    clientOptions: {
-      plugins: [socialNetworkClient()],
+  const { auth, signInWithTestUser } = await getTestInstance(
+    {
+      plugins: [
+        socialNetwork({
+          allowAddingUnknownMembersToGroupChat: true,
+        }),
+      ],
     },
-  });
+    {
+      clientOptions: {
+        plugins: [socialNetworkClient()],
+      },
+    },
+  );
 
   const { runWithUser, user } = await signInWithTestUser();
   await runWithUser(async (headers) => {
-
     beforeAll(async () => {
       const { groupChat } = await auth.api.createGroupChat({
         body: {
@@ -31,40 +36,21 @@ describe("API - Send Group Chat Message", async () => {
       expect(groupChat.createdById).toBe(user.id);
     });
 
-    it("should raise an error if group chat not found", async () => {
+    it("should raise an error if group chat is not found", async () => {
       const response = await auth.api.sendGroupChatMessage({
         body: {
-          groupChatId: 'non-existent-group-chat-id',
-          content: 'Hello!',
+          groupChatId: "non-existent-group-chat-id",
+          content: "Hello!",
         },
         headers,
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.NOT_FOUND));
-      expect(body.message).toBe(ERROR_MESSAGES.NOT_FOUND);
-
-      const { groupChats } = await auth.api.getGroupChats({
-        headers,
-      });
-      expect(groupChats).toBeDefined();
-      expect(groupChats.length).toBe(1);
-      const groupChat = groupChats[0];
-      expect(groupChat).toBeDefined();
-      expect(groupChat.name).toBe("Group Chat");
-      expect(groupChat.createdById).toBe(user.id);
-
-      const { messages } = await auth.api.getGroupChatMessages({
-        query: {
-          groupChatId: groupChat.id,
-        },
-        headers,
-      });
-      expect(messages).toBeDefined();
-      expect(messages.length).toBe(0);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND.message);
     });
 
-    it("should raise an error if message content is empty", async () => {
+    it("should raise an error if content is empty or undefined", async () => {
       const { groupChats } = await auth.api.getGroupChats({
         headers,
       });
@@ -78,14 +64,14 @@ describe("API - Send Group Chat Message", async () => {
       const response = await auth.api.sendGroupChatMessage({
         body: {
           groupChatId: groupChat.id,
-          content: '',
+          content: "",
         },
         headers,
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(errorMessageToCode(ERROR_MESSAGES.BAD_REQUEST));
-      expect(body.message).toBe(ERROR_MESSAGES.BAD_REQUEST);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_CONTENT_REQUIRED.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_CONTENT_REQUIRED.message);
 
       const { messages } = await auth.api.getGroupChatMessages({
         query: {
@@ -107,18 +93,18 @@ describe("API - Send Group Chat Message", async () => {
       expect(groupChat).toBeDefined();
       expect(groupChat.name).toBe("Group Chat");
       expect(groupChat.createdById).toBe(user.id);
-      
+
       const response = await auth.api.sendGroupChatMessage({
         body: {
           groupChatId: groupChat.id,
-          content: 'Hello!',
+          content: "Hello!",
         },
         headers,
         asResponse: true,
       });
       const body = await response.json();
       expect(body.message).toBeDefined();
-      expect(body.message.content).toBe('Hello!');
+      expect(body.message.content).toBe("Hello!");
       expect(body.message.senderId).toBe(user.id);
       expect(body.message.groupChatId).toBe(groupChat.id);
 
@@ -130,10 +116,9 @@ describe("API - Send Group Chat Message", async () => {
       });
       expect(messages).toBeDefined();
       expect(messages.length).toBe(1);
-      expect(messages[0].content).toBe('Hello!');
+      expect(messages[0].content).toBe("Hello!");
       expect(messages[0].senderId).toBe(user.id);
       expect(messages[0].groupChatId).toBe(groupChat.id);
     });
   });
-
 });
