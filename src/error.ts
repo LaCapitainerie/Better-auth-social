@@ -22,6 +22,7 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
   FRIEND_REQUEST_ALREADY_FRIENDS: 'You cannot send a friend request to a friend',
   FRIEND_REQUEST_NOT_PENDING: 'Friend request is not pending',
   FRIEND_REQUEST_FAILED_TO_UPDATE: 'Failed to update this friend request',
+  FRIEND_REQUEST_FAILED_TO_SEND: 'Failed to send friend request',
 
   /**
    * @feature Friend
@@ -29,11 +30,13 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
   NOT_A_FRIEND: 'You are not a friend with this user',
   FRIEND_NOT_FOUND: 'Friend not found',
   FRIEND_ID_REQUIRED: 'Friend id is required',
+  FRIEND_FAILED_TO_REMOVE: 'Failed to remove friend',
 
   /**
    * @feature Chat
    */
   PRIVATE_CHAT_NOT_FOUND: 'Private chat not found',
+  CHAT_FAILED_TO_CREATE: 'Failed to create chat',
 
   /**
    * @feature ChatMessage
@@ -44,6 +47,8 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
   CHAT_MESSAGE_CONTENT_REQUIRED: 'Chat message content is required',
   CHAT_MESSAGE_FAILED_TO_UPDATE: 'Failed to update this chat message',
   CHAT_MESSAGE_ALREADY_DELETED: 'Chat message already deleted',
+  CHAT_MESSAGE_FAILED_TO_CREATE: 'Failed to create chat message',
+  CHAT_MESSAGE_FAILED_TO_DELETE: 'Failed to delete chat message',
 
   /**
    * @feature GroupChat
@@ -60,6 +65,7 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
   GROUP_CHAT_FAILED_TO_REMOVE_MEMBER: 'Failed to remove member from group chat',
   GROUP_CHAT_CREATOR_NOT_ALLOWED_TO_REMOVE: 'Creator is not allowed to remove themselves from the group',
   GROUP_CHAT_NOT_ADMIN: 'You are not an admin of this group',
+  GROUP_CHAT_FAILED_TO_LEAVE: 'Failed to leave group chat',
 
   /**
    * @feature GroupChatMember
@@ -78,6 +84,7 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
   GROUP_CHAT_FAILED_TO_SEND_MESSAGE: 'Failed to send message to group chat',
   GROUP_CHAT_MESSAGE_ALREADY_DELETED: 'Group chat message already deleted',
   GROUP_CHAT_FAILED_TO_DELETE_MESSAGE: 'Failed to delete message from group chat',
+  GROUP_CHAT_FAILED_TO_UPDATE_MESSAGE: 'Failed to update message in group chat',
   GROUP_CHAT_MESSAGE_NOT_FOUND: 'Group chat message not found',
   GROUP_CHAT_MESSAGE_NOT_AUTHOR: 'You are not the author of this message',
 
