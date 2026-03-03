@@ -8,6 +8,7 @@ import { getSchema } from './schema.js';
 import { SOCIAL_NETWORK_ERROR_CODES } from './error.js';
 import { SocialNetworkOptions } from './options.js';
 import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post, PostLike } from './types.js';
+import { SocialNetworkAdapter } from './adapter.js';
 
 // Source - https://stackoverflow.com/a/64489535
 // Posted by nkitku, modified by community. See post 'Timeline' for change history
@@ -75,47 +76,24 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const { adapter, internalAdapter } = ctx.context;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
         const foreignUser = await internalAdapter.findUserById(receiverId);
         if (!foreignUser) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.NOT_FOUND);
         }
 
-        // Check if users are already friends
-        const existingFriend = await adapter.findOne<Friend>({
-          model: 'friend',
-          where: [
-            { field: 'userId', value: userId },
-            { field: 'friendId', value: foreignUser.id }
-          ]
-        });
-
-        if (existingFriend) {
+        const isFriend = await socialNetworkAdapter.isFriend(userId, foreignUser.id);
+        if (isFriend) {
           throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_ALREADY_FRIENDS);
         }
 
-        // Check if there's already a pending request
-        const existingRequest = await adapter.findOne<FriendRequest>({
-          model: 'friend_request',
-          where: [
-            { field: 'senderId', value: userId },
-            { field: 'receiverId', value: foreignUser.id },
-            { field: 'status', value: 'pending' }
-          ]
-        });
-
+        const existingRequest = await socialNetworkAdapter.isFriendRequestExists(userId, foreignUser.id, 'pending');
         if (existingRequest) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_ALREADY_SENT);
         }
 
-        const friendRequest = await adapter.create<FriendRequest>({
-          model: 'friend_request',
-          data: {
-            senderId: userId,
-            receiverId: foreignUser.id,
-            status: 'pending',
-          }
-        });
+        const friendRequest = await socialNetworkAdapter.sendFriendRequest(userId, foreignUser.id);
 
         // Call hook
         if (hooks.onFriendRequestSend) {
@@ -148,16 +126,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const friendRequest = await adapter.findOne<FriendRequest>({
-          model: 'friend_request',
-          where: [
-            { field: 'id', value: requestId },
-            { field: 'receiverId', value: userId }
-          ]
-        });
+        const friendRequest = await socialNetworkAdapter.getFriendRequestById(requestId);
 
         if (!friendRequest) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_FOUND);
+        }
+
+        if (friendRequest.receiverId !== userId) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_FOUND);
         }
 
@@ -166,6 +143,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const updatedRequest = await adapter.transaction(async (tx) => {
+
           // Update request status
           const updatedRequest = await tx.update<FriendRequest>({
             model: 'friend_request',
@@ -234,39 +212,27 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const friendRequest = await adapter.findOne<FriendRequest>({
-          model: 'friend_request',
-          where: [
-            { field: 'id', value: requestId },
-            { field: 'receiverId', value: userId }
-          ]
-        });
+        const friendRequest = await socialNetworkAdapter.getFriendRequestById(requestId);
 
         if (!friendRequest) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_FOUND);
+        }
+
+        if (friendRequest.receiverId !== userId) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_FOUND);
         }
 
         if (friendRequest.status !== 'pending') {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_NOT_PENDING);
         }
+        
+        const updatedRequest = await socialNetworkAdapter.updateFriendRequestStatus(requestId, 'rejected');
 
-        const updatedRequest = await adapter.transaction(async (tx) => {
-          // Update request status
-          const updatedRequest = await tx.update<FriendRequest>({
-            model: 'friend_request',
-            where: [{ field: 'id', value: requestId }],
-            update: {
-              status: 'rejected',
-            }
-          });
-
-          if (!updatedRequest) {
-            throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_FAILED_TO_UPDATE);
-          }
-
-          return updatedRequest;
-        });
+        if (!updatedRequest) {
+          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.FRIEND_REQUEST_FAILED_TO_UPDATE);
+        }
 
         // Call hook
         if (hooks.onFriendRequestReject) {
@@ -292,19 +258,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
-
-        const where: Where[] = [{ field: 'senderId', value: userId }];
-        if (status) {
-          where.push({ field: 'status', value: status });
-        }
-
-        const sentRequests = await adapter.findMany<FriendRequest>({
-          model: 'friend_request',
-          where,
-          limit: limit,
-          offset: (page - 1) * (limit),
-        });
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const sentRequests = await socialNetworkAdapter.getFriendRequestsSent(userId, limit, page, status);
 
         return ctx.json({ sent: sentRequests });
       }),
@@ -325,19 +280,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const where: Where[] = [{ field: 'receiverId', value: userId }];
-        if (status) {
-          where.push({ field: 'status', value: status });
-        }
-
-        const receivedRequests = await adapter.findMany<FriendRequest>({
-          model: 'friend_request',
-          where,
-          limit: limit,
-          offset: (page - 1) * (limit),
-        });
+        const receivedRequests = await socialNetworkAdapter.getFriendRequestsReceived(userId, limit, page, status);
 
         return ctx.json({ received: receivedRequests });
       }),
@@ -355,14 +300,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const updatedRequests = await adapter.updateMany({
-          model: 'friend_request',
-          where: [{ field: 'receiverId', value: userId }, { field: 'status', value: 'pending' }],
-          update: {
-            status: 'rejected',
-          }
-        });
+        await socialNetworkAdapter.rejectAllFriendRequests(userId);
 
         return ctx.json({ success: true });
       }),
@@ -387,14 +327,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
-
-        const friends = await adapter.findMany<Friend>({
-          model: 'friend',
-          where: [{ field: 'userId', value: userId }],
-          limit: limit,
-          offset: (page - 1) * (limit),
-        });
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const friends = await socialNetworkAdapter.getFriends(userId, limit, page);
 
         return ctx.json({ friends });
       }),
@@ -452,13 +386,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             return;
           }
 
-          await tx.delete({
-            model: 'friend',
-            where: [
-              { field: 'userId', value: friendId },
-              { field: 'friendId', value: userId }
-            ]
-          });
+          if (OPTIONS.automaticBackFriend) {
+            await tx.delete({
+              model: 'friend',
+              where: [
+                { field: 'userId', value: friendId },
+                { field: 'friendId', value: userId }
+              ]
+            });
+          }
 
         });
 
@@ -494,16 +430,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const isFriend = await adapter.findOne<Friend>({
-          model: 'friend',
-          where: [
-            { field: 'userId', value: userId },
-            { field: 'friendId', value: friendId }
-          ]
-        });
+        const isFriend = await socialNetworkAdapter.isFriend(userId, friendId);
 
-        return ctx.json({ isFriend: !!isFriend });
+        return ctx.json({ isFriend });
       }),
 
 
@@ -530,39 +461,19 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        // Check if users are friends
-        const isFriend = await adapter.findOne<Friend>({
-          model: 'friend',
-          where: [
-            { field: 'userId', value: userId },
-            { field: 'friendId', value: friendId }
-          ]
-        });
-
+        const isFriend = await socialNetworkAdapter.isFriend(userId, friendId);
         if (!isFriend) {
-          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND);
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.NOT_A_FRIEND);
         }
 
-        // Check if chat already exists
-        const existingChat = await adapter.findOne<Chat>({
-          model: 'chat',
-          where: [
-            { field: 'user1Id', value: [userId, friendId], operator: 'in' },
-          ]
-        });
-
+        const existingChat = await socialNetworkAdapter.getChatByUsersId(userId, friendId);
         if (existingChat) {
           return ctx.json({ chat: existingChat });
         }
 
-        const chat = await adapter.create<Chat>({
-          model: 'chat',
-          data: {
-            user1Id: userId,
-            user2Id: friendId,
-          }
-        });
+        const chat = await socialNetworkAdapter.createChat(userId, friendId);
 
         // Call hook
         if (hooks.onChatCreate) {
@@ -589,17 +500,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const chats = await adapter.findMany<Chat>({
-          model: 'chat',
-          where: [
-            { field: 'user1Id', value: userId, connector: 'OR' },
-            { field: 'user2Id', value: userId, connector: 'OR' }
-          ],
-          limit: limit,
-          offset: (page - 1) * (limit),
-        });
+        const chats = await socialNetworkAdapter.getChats(userId, limit, page);
 
         return ctx.json({ chats });
       }),
@@ -625,36 +528,17 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        // Verify user is part of the chat
-        const chat = await adapter.findOne<Chat>({
-          model: 'chat',
-          where: [{ field: 'id', value: chatId }]
-        });
-
+        const chat = await socialNetworkAdapter.getChatById(chatId);
         if (!chat) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
-
         if (chat.user1Id !== userId && chat.user2Id !== userId) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
 
-        const messages = await adapter.findMany<ChatMessage>({
-          model: 'chat_message',
-          where: [
-            {
-              field: 'chatId',
-              value: chatId,
-              operator: 'eq',
-              connector: 'AND'
-            },
-          ],
-          limit: limit,
-          offset: (page - 1) * (limit),
-        }).then(messages => messages.filter(message => message.deletedAt === null));
-        // TODO: Find a way to filter deleted messages by using the default Adapter filter
+        const messages = await socialNetworkAdapter.getChatMessages(chatId, limit, page);
 
         return ctx.json({ messages });
       }),
@@ -684,13 +568,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_CONTENT_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
         // Verify user is part of the chat
-        const chat = await adapter.findOne<Chat>({
-          model: 'chat',
-          where: [{ field: 'id', value: chatId }]
-        });
+        const chat = await socialNetworkAdapter.getChatById(chatId);
 
         if (!chat) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
@@ -700,15 +581,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.PRIVATE_CHAT_NOT_FOUND);
         }
 
-        const message = await adapter.create<ChatMessage>({
-          model: 'chat_message',
-          data: {
-            content: content,
-            senderId: userId,
-            chatId: chatId,
-            deletedAt: null,
-          }
-        });
+        const message = await socialNetworkAdapter.createChatMessage(chatId, userId, content);
 
         // Call hook
         if (hooks.onChatMessageSend) {
@@ -738,12 +611,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const chatMessage = await adapter.findOne<ChatMessage>({
-          model: 'chat_message',
-          where: [{ field: 'id', value: chatMessageId, connector: 'AND' }]
-        });
+        const chatMessage = await socialNetworkAdapter.getChatMessageById(chatMessageId);
 
         if (!chatMessage) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_NOT_FOUND);
@@ -757,13 +627,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_ALREADY_DELETED);
         }
 
-        const updatedChatMessage = await adapter.update<ChatMessage>({
-          model: 'chat_message',
-          where: [{ field: 'id', value: chatMessageId }],
-          update: {
-            deletedAt: new Date(),
-          }
-        });
+        const updatedChatMessage = await socialNetworkAdapter.deleteChatMessage(chatMessageId);
 
         if (!updatedChatMessage) {
           throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_FAILED_TO_UPDATE);
@@ -891,8 +755,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         });
 
         if (hooks.onGroupChatJoin) {
-          await Promise.all(memberIds.map(async () => {
-            await hooks.onGroupChatJoin?.(groupChat);
+          await Promise.all(memberIds.map(async (memberId) => {
+            await hooks.onGroupChatJoin?.({ userId: memberId, groupChatId: groupChat.id });
           }));
         }
 
@@ -921,22 +785,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
-
-        const memberships = await adapter.findMany<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [{ field: 'userId', value: userId }]
-        });
-
-        const groupChatIds = memberships.map(m => m.groupChatId);
-
-        const groupChats = await adapter.findMany<GroupChat>({
-          model: 'group_chat',
-          where: [{ field: 'id', value: groupChatIds, operator: 'in' }],
-          limit: limit,
-          offset: (page - 1) * (limit),
-        });
-
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const groupChats = await socialNetworkAdapter.getGroupChats(userId, limit, page);
+        
         return ctx.json({ groupChats });
       }),
       leaveGroupChat: createAuthEndpoint('/social/group-chat/leave', {
@@ -961,26 +812,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const membership = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
-
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
-        await adapter.delete({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
+        await socialNetworkAdapter.leaveGroupChat(userId, groupChatId);
 
         // Call hook
         if (hooks.onGroupChatLeave) {
@@ -1013,43 +852,22 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const membership = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: id },
-            { field: 'userId', value: userId }
-          ]
-        });
-
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, id);
         if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
-
         if (membership.role !== 'admin') {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
         }
 
-        const groupChat = await adapter.findOne<GroupChat>({
-          model: 'group_chat',
-          where: [{ field: 'id', value: id }]
-        });
-
+        const groupChat = await socialNetworkAdapter.getGroupChatById(id);
         if (!groupChat) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
-        const updatedGroupChatData = {
-          name: name,
-          description: description,
-        };
-
-        const updatedGroupChat = await adapter.update<GroupChat>({
-          model: 'group_chat',
-          where: [{ field: 'id', value: id }],
-          update: updatedGroupChatData,
-        });
-
+        const updatedGroupChat = await socialNetworkAdapter.updateGroupChat(id, { name, description });
         if (!updatedGroupChat) {
           throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_UPDATE);
         }
@@ -1080,23 +898,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
-        const isMember = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
-
+        const isMember = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!isMember) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
-        const members = await adapter.findMany<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [{ field: 'groupChatId', value: groupChatId }]
-        });
+        const members = await socialNetworkAdapter.getGroupChatMembers(groupChatId);
 
         return ctx.json({ members });
       }),
@@ -1126,81 +935,39 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
-
-        const groupChat = await adapter.findOne<GroupChat>({
-          model: 'group_chat',
-          where: [{ field: 'id', value: groupChatId }]
-        });
-
-        if (!groupChat) {
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
+        if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
-
+        if (membership.role !== 'admin') {
+          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
+        }
 
         if (!OPTIONS.allowAddingUnknownMembersToGroupChat) {
-          const friend = await adapter.findOne<Friend>({
-            model: 'friend',
-            where: [{ field: 'userId', value: userId }, { field: 'friendId', value: newMemberId }]
-          });
+          const friend = await socialNetworkAdapter.isFriend(userId, newMemberId);
           if (!friend) {
             throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.ADDING_UNKNOWN_MEMBERS_TO_GROUP_CHAT);
           }
         }
 
-        const groupChatMembers = await adapter.findMany<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [{ field: 'groupChatId', value: groupChatId }]
-        });
-        if (groupChatMembers.length >= OPTIONS.maxGroupSize) {
+        const groupChatMembers = await socialNetworkAdapter.getGroupChatMembers(groupChatId);
+        if (groupChatMembers.length + 1 > OPTIONS.maxGroupSize) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.MAX_GROUP_SIZE);
         }
 
-        // Check if user is admin or member
-        const membership = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
-
-        if (!membership) {
-          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
-        }
-
-        if (membership.role !== 'admin') {
-          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
-        }
-
         // Check if new member is already in the group
-        const existingMember = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: newMemberId }
-          ]
-        });
-
+        const existingMember = await socialNetworkAdapter.isInGroupChat(newMemberId, groupChatId);
         if (existingMember) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ALREADY_MEMBER);
         }
 
-        await adapter.create<GroupChatMember>({
-          model: 'group_chat_member',
-          data: { 
-            groupChatId: groupChatId,
-            userId: newMemberId,
-            role: 'member',
-            joinedAt: new Date(),
-          }
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_ADD_MEMBER);
-        });
+        await socialNetworkAdapter.addMemberToGroupChat(groupChatId, newMemberId);
 
         // Call hook
         if (hooks.onGroupChatJoin) {
-          await hooks.onGroupChatJoin(groupChat);
+          await hooks.onGroupChatJoin({ userId, groupChatId });
         }
 
         return ctx.json({ success: true });
@@ -1231,48 +998,27 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
         // Check if user is admin
-        const membership = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
-
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
-
         if (membership.role !== 'admin') {
           throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_ADMIN);
         }
 
         // Don't allow removing the creator
-        const groupChat = await adapter.findOne<GroupChat>({
-          model: 'group_chat',
-          where: [{ field: 'id', value: groupChatId }]
-        });
-
+        const groupChat = await socialNetworkAdapter.getGroupChatById(groupChatId);
         if (!groupChat) {
           throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN);
         }
-
         if (groupChat.createdById === memberIdToRemove) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_CREATOR_NOT_ALLOWED_TO_REMOVE);
         }
 
-        await adapter.delete({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId, connector: 'AND' },
-            { field: 'id', value: memberIdToRemove, connector: 'AND' }
-          ]
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_REMOVE_MEMBER);
-        });
+        await socialNetworkAdapter.removeMemberFromGroupChat(groupChatId, memberIdToRemove);
 
         // Call hook
         if (hooks.onGroupChatLeave) {
@@ -1308,31 +1054,22 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
 
         // Verify user is a member of the group
-        const membership = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
-
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
-        const where: Where[] = [{ field: 'groupChatId', value: groupChatId, operator: 'eq', connector: 'AND' }];
-        if (OPTIONS.messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
-          where.push({ field: 'senderId', value: userId, operator: 'eq', connector: 'AND' });
-        }
 
-        const messages = await adapter.findMany<GroupChatMessage>({
-          model: 'group_chat_message',
-          where: where,
-          limit: limit,
-          offset: (page - 1) * (limit),
-        }).then(async messages => await Promise.all(messages.map(async message => {
+        const messages = await (
+          OPTIONS.messageDeletionRule === 'SENDER_ONLY_VISIBLE' ?
+          socialNetworkAdapter.getGroupChatMessagesFromUser(groupChatId, userId, limit, page) :
+          socialNetworkAdapter.getGroupChatMessages(groupChatId, limit, page)
+        );
+
+        const messagesWithPlaceholder = await Promise.all(messages.map(async message => {
           if (message.deletedAt !== null) {
             if (OPTIONS.messageDeletionRule === 'SENDER_ONLY_VISIBLE') {
               return {
@@ -1348,9 +1085,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
             }
           }
           return message;
-        })));
+        }));
 
-        return ctx.json({ messages });
+        return ctx.json({ messages: messagesWithPlaceholder });
       }),
       sendGroupChatMessage: createAuthEndpoint('/social/group-chat/send-message', {
         method: "POST",
@@ -1378,32 +1115,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
         // Verify user is a member of the group
-        const membership = await adapter.findOne<GroupChatMember>({
-          model: 'group_chat_member',
-          where: [
-            { field: 'groupChatId', value: groupChatId },
-            { field: 'userId', value: userId }
-          ]
-        });
-
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
-        const message = await adapter.create<GroupChatMessage>({
-          model: 'group_chat_message',
-          data: {
-            content: content,
-            senderId: userId,
-            groupChatId: groupChatId,
-            deletedAt: null,
-          }
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_SEND_MESSAGE);
-        });
+        const message = await socialNetworkAdapter.createGroupChatMessage(groupChatId, userId, content);
 
         // Call hook
         if (hooks.onGroupChatMessageSend) {
@@ -1443,42 +1163,25 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const groupChat = await adapter.findOne<GroupChat>({
-          model: 'group_chat',
-          where: [{ field: 'id', value: groupChatId }]
-        });
-
-        if (!groupChat) {
+        const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
+        if (!membership) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_NOT_FOUND);
         }
 
-        const message = await adapter.findOne<GroupChatMessage>({
-          model: 'group_chat_message',
-          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChat.id }]
-        });
-
+        const message = await socialNetworkAdapter.getGroupChatMessageById(messageId);
         if (!message) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_NOT_FOUND);
         }
-
         if (message.senderId !== userId) {
           throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_NOT_AUTHOR);
         }
-
         if (message.deletedAt !== null) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_ALREADY_DELETED);
         }
 
-        const updatedMessage = await adapter.update<GroupChatMessage>({
-          model: 'group_chat_message',
-          where: [{ field: 'id', value: messageId }, { field: 'groupChatId', value: groupChat.id }],
-          update: {
-            deletedAt: new Date(),
-          }
-        });
-
+        const updatedMessage = await socialNetworkAdapter.deleteGroupChatMessage(messageId);
         if (!updatedMessage) {
           throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_FAILED_TO_DELETE_MESSAGE);
         }
@@ -1506,12 +1209,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const adapter = ctx.context.adapter;
-        
-        const blockedUsers = await adapter.findMany<BlockedUser>({
-          model: 'blocked_user',
-          where: [{ field: 'userId', value: userId }],
-        });
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+
+        const blockedUsers = await socialNetworkAdapter.getBlockedUsers(userId);
 
         return ctx.json({ blockedUsers });
       }),
@@ -1540,32 +1240,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_SELF_BLOCK_NOT_ALLOWED);
         }
 
-        const { adapter, internalAdapter } = ctx.context;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const foreignUser = await internalAdapter.findUserById(blockedUserId);
-        if (!foreignUser) {
-          throw APIError.from('FORBIDDEN', SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN);
-        }
-
-        // Check if user is already blocked
-        const existingBlockedUser = await adapter.findOne<BlockedUser>({
-          model: 'blocked_user',
-          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
-        });
-
-        if (existingBlockedUser) {
+        const isBlocked = await socialNetworkAdapter.isBlocked(userId, blockedUserId);
+        if (isBlocked) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_ALREADY_BLOCKED);
         }
 
-        const blockedUser = await adapter.create<BlockedUser>({
-          model: 'blocked_user',
-          data: {
-            userId: userId,
-            blockedUserId: blockedUserId,
-          }
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_FAILED_TO_BLOCK);
-        });
+        const blockedUser = await socialNetworkAdapter.blockUser(userId, blockedUserId);
 
         return ctx.json({ blockedUser });
       }),
@@ -1594,23 +1276,15 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_SELF_BLOCK_NOT_ALLOWED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const blockedUser = await adapter.findOne<BlockedUser>({
-          model: 'blocked_user',
-          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
-        });
+        const isBlocked = await socialNetworkAdapter.isBlocked(userId, blockedUserId);
 
-        if (!blockedUser) {
+        if (!isBlocked) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_NOT_FOUND);
         }
 
-        await adapter.delete({
-          model: 'blocked_user',
-          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_FAILED_TO_UNBLOCK);
-        });
+        await socialNetworkAdapter.unblockUser(userId, blockedUserId);
 
         return ctx.json({ success: true });
       }),
@@ -1635,14 +1309,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_BLOCKED_USER_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const blockedUser = await adapter.findOne<BlockedUser>({
-          model: 'blocked_user',
-          where: [{ field: 'userId', value: userId }, { field: 'blockedUserId', value: blockedUserId }],
-        });
+        const isBlocked = await socialNetworkAdapter.isBlocked(userId, blockedUserId);
 
-        return ctx.json({ isBlocked: !!blockedUser });
+        return ctx.json({ isBlocked });
       }),
 
 
@@ -1670,14 +1341,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_TARGET_USER_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const posts = await adapter.findMany<Post>({
-          model: 'post',
-          where: [{ field: 'posterId', value: targetUserId }],
-          limit: limit,
-          offset: (page - 1) * (limit),
-        });
+        const posts = await socialNetworkAdapter.getPosts(targetUserId, limit, page);
 
         return ctx.json({ posts });
       }),
@@ -1702,22 +1368,9 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_CONTENT_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const post = await adapter.create<Post>({
-          model: 'post',
-          data: {
-            posterId: userId,
-            content: content,
-            likesCount: 0,
-            commentsCount: 0,
-            sharesCount: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_CREATE);
-        });
+        const post = await socialNetworkAdapter.createPost(userId, content);
 
         return ctx.json({ post });
         
@@ -1743,27 +1396,17 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
         }
 
-        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const post = await adapter.findOne<Post>({
-          model: 'post',
-          where: [{ field: 'id', value: postId }],
-        });
-        
+        const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
-
         if (post.posterId !== userId) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
 
-        await adapter.delete({
-          model: 'post',
-          where: [{ field: 'id', value: postId }, { field: 'posterId', value: userId }],
-        }).catch(() => {
-          throw APIError.from('INTERNAL_SERVER_ERROR', SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_DELETE);
-        });
+        await socialNetworkAdapter.deletePost(postId);
 
         return ctx.json({ success: true });
         
@@ -1790,21 +1433,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const post = await adapter.findOne<Post>({
-          model: 'post',
-          where: [{ field: 'id', value: postId }],
-        });
-        
+        const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
         
-        const existingLike = await adapter.findOne<PostLike>({
-          model: 'post_like',
-          where: [{ field: 'postId', value: postId }, { field: 'userId', value: userId }],
-        });
-        
+        const existingLike = await socialNetworkAdapter.isPostLiked(postId, userId);
         if (existingLike) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_LIKED);
         }
@@ -1864,21 +1500,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
 
-        const post = await adapter.findOne<Post>({
-          model: 'post',
-          where: [{ field: 'id', value: postId }],
-        });
-        
+        const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
           throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
         }
 
-        const existingLike = await adapter.findOne<PostLike>({
-          model: 'post_like',
-          where: [{ field: 'postId', value: postId }, { field: 'userId', value: userId }],
-        });
-        
+        const existingLike = await socialNetworkAdapter.isPostLiked(postId, userId);
         if (!existingLike) {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ALREADY_UNLIKED);
         }

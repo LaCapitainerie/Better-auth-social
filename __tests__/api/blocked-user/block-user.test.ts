@@ -28,8 +28,8 @@ describe("API - blockUser", async () => {
         asResponse: true,
       });
       const body = await response.json();
-      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN.code);
-      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.FORBIDDEN.message);
+      expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_FAILED_TO_BLOCK.code);
+      expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_FAILED_TO_BLOCK.message);
     });
 
     it("should raise an error if user is self", async () => {

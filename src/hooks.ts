@@ -44,7 +44,7 @@ export type SocialNetworkHooks = {
   /**
    * Called when a user joins a group chat
    */
-  onGroupChatJoin?: (data: GroupChat) => Promise<void> | void;
+  onGroupChatJoin?: (data: { userId: string; groupChatId: string }) => Promise<void> | void;
 
   /**
    * Called when a user leaves or is removed from a group chat
