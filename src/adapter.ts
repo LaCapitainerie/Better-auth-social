@@ -641,4 +641,13 @@ export class SocialNetworkAdapter {
       where: [{ field: "postId", value: postId }, { field: "userId", value: userId }],
     });
   }
+
+  async getBookmarkedPosts(userId: string, limit: number, page: number) {
+    return this.adapter.findMany<PostBookmark>({
+      model: "post_bookmark",
+      where: [{ field: "userId", value: userId }],
+      limit: limit,
+      offset: (page - 1) * limit,
+    });
+  }
 }

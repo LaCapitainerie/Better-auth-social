@@ -1577,6 +1577,31 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ postBookmark });
       }),
+
+      getBookmarkedPosts: createAuthEndpoint('/social/post/bookmark/list', {
+        method: "GET",
+        query: z.object({
+          page: z.number().optional().default(1),
+          limit: z.number().optional().default(10),
+        }),
+        response: z.object({
+          posts: z.array(Post),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { page, limit } = ctx.query;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+
+        const posts = await socialNetworkAdapter.getBookmarkedPosts(userId, limit, page);
+
+        return ctx.json({ posts });
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
