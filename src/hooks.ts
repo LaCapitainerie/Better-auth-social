@@ -1,4 +1,4 @@
-import type { FriendRequest, Chat, ChatMessage, GroupChat, GroupChatMessage } from "./types.js";
+import type { FriendRequest, Chat, ChatMessage, GroupChat, GroupChatMessage, PostBookmark } from "./types.js";
 
 export type SocialNetworkHooks = {
   /**
@@ -60,4 +60,9 @@ export type SocialNetworkHooks = {
    * Called when a group chat message is deleted
    */
   onGroupChatMessageDelete?: (data: GroupChatMessage) => Promise<void> | void;
+
+  /**
+   * Called when a post is added to bookmarks
+   */
+  onPostAddToBookmarks?: (data: PostBookmark) => Promise<void> | void;
 }
