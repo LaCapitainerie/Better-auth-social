@@ -1,6 +1,6 @@
 {
   "name": "better-auth-social",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "A social network plugin for Better Auth with friends, friend requests, chat, and group chat features.",
   "author": "LaCapitainerie",
   "main": "dist/index.js",
@@ -52,18 +52,19 @@
     "better-auth": "^1.6.20",
     "better-sqlite3": "^12.11.1",
     "typescript": "6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+
+    "@hono/node-server": "^2.0.6",
+    "effect": "^3.21.4",
+    "hono": "^4.12.27",
+    "lodash": "^4.18.1",
+    "vite": "^8.0.16"
   },
   "peerDependencies": {
     "better-auth": "^1.5.1"
   },
   "dependencies": {
     "@better-auth/core": "^1.6.20",
-    "@hono/node-server": "^2.0.6",
-    "effect": "^3.21.4",
-    "hono": "^4.12.27",
-    "lodash": "^4.18.1",
-    "vite": "^8.0.16",
     "zod": "^4.4.3"
   }
 }
