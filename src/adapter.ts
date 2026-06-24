@@ -650,4 +650,16 @@ export class SocialNetworkAdapter {
       offset: (page - 1) * limit,
     });
   }
+
+  async removePostFromBookmarks(userId: string, postId: string) {
+    return this.adapter.delete({
+      model: "post_bookmark",
+      where: [{ field: "userId", value: userId }, { field: "postId", value: postId }],
+    }).catch(() => {
+      throw APIError.from(
+        "INTERNAL_SERVER_ERROR",
+        SOCIAL_NETWORK_ERROR_CODES.POST_BOOKMARK_FAILED_TO_REMOVE_FROM_BOOKMARKS,
+      );
+    });
+  }
 }

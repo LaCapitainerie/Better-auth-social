@@ -1602,6 +1602,43 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         return ctx.json({ posts });
       }),
+      removePostFromBookmarks: createAuthEndpoint('/social/post/bookmark/remove', {
+        method: "POST",
+        body: z.object({
+          postId: z.string(),
+        }),
+        response: z.object({
+          success: z.boolean(),
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { postId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!postId || postId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
+        }
+
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+
+        const post = await socialNetworkAdapter.getPostById(postId);
+        if (!post) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
+        }
+
+        const existingBookmark = await socialNetworkAdapter.isPostBookmarked(postId, userId);
+        if (!existingBookmark) {
+          return ctx.json({ success: true });
+        }
+
+        await socialNetworkAdapter.removePostFromBookmarks(userId, postId);
+
+        return ctx.json({ success: true });
+      }),
     },
   } satisfies BetterAuthPlugin;
 };
