@@ -1575,6 +1575,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
 
         const postBookmark = await socialNetworkAdapter.addPostToBookmarks(userId, postId);
 
+        // Call hook
+        if (hooks.onPostAddToBookmarks) {
+          await hooks.onPostAddToBookmarks(postBookmark);
+        }
+
         return ctx.json({ postBookmark });
       }),
 
@@ -1636,6 +1641,11 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         await socialNetworkAdapter.removePostFromBookmarks(userId, postId);
+
+        // Call hook
+        if (hooks.onPostRemoveFromBookmarks) {
+          await hooks.onPostRemoveFromBookmarks(existingBookmark);
+        }
 
         return ctx.json({ success: true });
       }),
