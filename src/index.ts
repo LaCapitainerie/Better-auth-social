@@ -76,7 +76,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const { adapter, internalAdapter } = ctx.context;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const foreignUser = await internalAdapter.findUserById(receiverId);
         if (!foreignUser) {
@@ -126,7 +126,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const friendRequest = await socialNetworkAdapter.getFriendRequestById(requestId);
 
@@ -212,7 +212,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const friendRequest = await socialNetworkAdapter.getFriendRequestById(requestId);
 
@@ -258,7 +258,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
         const sentRequests = await socialNetworkAdapter.getFriendRequestsSent(userId, limit, page, status);
 
         return ctx.json({ sent: sentRequests });
@@ -280,7 +281,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const receivedRequests = await socialNetworkAdapter.getFriendRequestsReceived(userId, limit, page, status);
 
@@ -300,7 +302,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         await socialNetworkAdapter.rejectAllFriendRequests(userId);
 
@@ -327,7 +329,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
         const friends = await socialNetworkAdapter.getFriends(userId, limit, page);
 
         return ctx.json({ friends });
@@ -430,7 +433,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const isFriend = await socialNetworkAdapter.isFriend(userId, friendId);
 
@@ -461,7 +464,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const isFriend = await socialNetworkAdapter.isFriend(userId, friendId);
         if (!isFriend) {
@@ -500,7 +503,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const chats = await socialNetworkAdapter.getChats(userId, limit, page);
 
@@ -528,7 +532,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const chat = await socialNetworkAdapter.getChatById(chatId);
         if (!chat) {
@@ -568,7 +573,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_CONTENT_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         // Verify user is part of the chat
         const chat = await socialNetworkAdapter.getChatById(chatId);
@@ -611,7 +617,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.CHAT_MESSAGE_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const chatMessage = await socialNetworkAdapter.getChatMessageById(chatMessageId);
 
@@ -785,7 +792,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
         const groupChats = await socialNetworkAdapter.getGroupChats(userId, limit, page);
         
         return ctx.json({ groupChats });
@@ -812,7 +820,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
@@ -852,7 +860,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const membership = await socialNetworkAdapter.isInGroupChat(userId, id);
         if (!membership) {
@@ -898,7 +906,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const isMember = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!isMember) {
@@ -935,7 +943,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
         
         const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
@@ -998,7 +1007,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MEMBER_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         // Check if user is admin
         const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
@@ -1054,7 +1064,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         // Verify user is a member of the group
         const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
@@ -1115,7 +1125,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         // Verify user is a member of the group
         const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
@@ -1163,7 +1174,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.GROUP_CHAT_MESSAGE_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const membership = await socialNetworkAdapter.isInGroupChat(userId, groupChatId);
         if (!membership) {
@@ -1209,7 +1221,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const blockedUsers = await socialNetworkAdapter.getBlockedUsers(userId);
 
@@ -1240,7 +1253,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_SELF_BLOCK_NOT_ALLOWED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const isBlocked = await socialNetworkAdapter.isBlocked(userId, blockedUserId);
         if (isBlocked) {
@@ -1276,7 +1290,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_SELF_BLOCK_NOT_ALLOWED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const isBlocked = await socialNetworkAdapter.isBlocked(userId, blockedUserId);
 
@@ -1309,7 +1324,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.BLOCKED_USER_BLOCKED_USER_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const isBlocked = await socialNetworkAdapter.isBlocked(userId, blockedUserId);
 
@@ -1341,7 +1357,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_TARGET_USER_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const posts = await socialNetworkAdapter.getPosts(targetUserId, limit, page);
 
@@ -1351,13 +1368,14 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         method: "POST",
         body: z.object({
           content: z.string(),
+          private: z.boolean().optional().default(false),
         }),
         response: z.object({
           post: Post,
         }),
         use: [sessionMiddleware],
       }, async (ctx) => {
-        const { content } = ctx.body;
+        const { content, private: isPrivate } = ctx.body;
         const userId = ctx.context.session?.user.id;
 
         if (!userId) {
@@ -1368,9 +1386,10 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_CONTENT_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
-        const post = await socialNetworkAdapter.createPost(userId, content);
+        const post = await socialNetworkAdapter.createPost(userId, content, isPrivate);
 
         return ctx.json({ post });
         
@@ -1396,7 +1415,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
@@ -1433,7 +1453,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
@@ -1500,7 +1520,7 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         const adapter = ctx.context.adapter;
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
@@ -1561,7 +1581,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {
@@ -1601,7 +1622,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const posts = await socialNetworkAdapter.getBookmarkedPosts(userId, limit, page);
 
@@ -1628,7 +1650,8 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
           throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
         }
 
-        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+        const adapter = ctx.context.adapter;
+        const socialNetworkAdapter = new SocialNetworkAdapter(adapter, userId);
 
         const post = await socialNetworkAdapter.getPostById(postId);
         if (!post) {

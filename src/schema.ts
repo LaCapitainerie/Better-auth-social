@@ -346,6 +346,12 @@ export const getSchema = () => {
           defaultValue: 0,
           returned: true,
         },
+        private: {
+          type: "boolean",
+          required: true,
+          defaultValue: false,
+          returned: true,
+        },
         createdAt: {
           type: "date",
           required: true,

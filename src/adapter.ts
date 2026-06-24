@@ -15,7 +15,7 @@ import {
 import { SOCIAL_NETWORK_ERROR_CODES } from "./error.js";
 
 export class SocialNetworkAdapter {
-  constructor(private readonly adapter: DBAdapter<BetterAuthOptions>) {}
+  constructor(private readonly adapter: DBAdapter<BetterAuthOptions>, private readonly userId: string) {}
 
   async isFriendRequestExists(
     senderId: string,
@@ -522,22 +522,54 @@ export class SocialNetworkAdapter {
   }
 
   async getPosts(userId: string, limit: number, page: number) {
-    return this.adapter.findMany<Post>({
+    const posts = await this.adapter.findMany<Post>({
       model: "post",
       where: [{ field: "posterId", value: userId }],
       limit: limit,
       offset: (page - 1) * limit,
     });
+
+    const visibility = await Promise.all(
+      posts.map(async (post) => {
+        if (!post.private) {
+          return true;
+        }
+
+        if (post.posterId === this.userId) {
+          return true;
+        }
+
+        return this.isFriend(this.userId, post.posterId);
+      }),
+    );
+
+    const filteredPosts = posts.filter((_, index) => visibility[index]);
+
+    return filteredPosts;
   }
 
   async getPostById(id: string) {
-    return this.adapter.findOne<Post>({
+    const post = await this.adapter.findOne<Post>({
       model: "post",
       where: [{ field: "id", value: id }],
     });
+
+    if (!post) {
+      return null;
+    }
+
+    if (!post.private) {
+      return post;
+    }
+
+    if (await this.isFriend(this.userId, post.posterId)) {
+      return post;
+    }
+
+    return null;
   }
 
-  async createPost(posterId: string, content: string) {
+  async createPost(posterId: string, content: string, isPrivate: boolean) {
     return this.adapter.create<Post>({
       model: "post",
       data: {
@@ -546,6 +578,7 @@ export class SocialNetworkAdapter {
         likesCount: 0,
         commentsCount: 0,
         sharesCount: 0,
+        private: isPrivate,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
