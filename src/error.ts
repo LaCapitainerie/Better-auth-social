@@ -147,7 +147,7 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
    * @feature PostBookmark
    */
   POST_BOOKMARK_FAILED_TO_ADD_TO_BOOKMARKS: 'Failed to add post to bookmarks',
-
+  POST_BOOKMARK_FAILED_TO_REMOVE_FROM_BOOKMARKS: 'Failed to remove post from bookmarks',
 });
 
 /**
