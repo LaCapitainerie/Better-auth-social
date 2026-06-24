@@ -49,15 +49,26 @@ describe("API - Add Post to Bookmark", async () => {
       expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.message);
     });
 
-    /* it("should raise an error if the post exist but is not visible from the user", async () => {
+    it("should raise an error if the post exist but is not visible from the user", async () => {
 
-      const { user: otherUser, headers: otherHeaders } = await signInWithTestUser();
+      const { user: otherUser, token: otherToken } = await auth.api.signUpEmail({
+        body: {
+          name: "Other User",
+          email: "other@example.com",
+          password: "password",
+        },
+      });
+      expect(otherUser).toBeDefined();
+      expect(otherToken).toBeDefined();
 
       const { post: otherPost } = await auth.api.createPost({
         body: {
           content: "Hello, world! from other user",
+          private: true,
         },
-        headers: otherHeaders,
+        headers: {
+          Authorization: `Bearer ${otherToken}`,
+        },
       });
       expect(otherPost).toBeDefined();
       expect(otherPost.content).toBe("Hello, world! from other user");
@@ -75,7 +86,7 @@ describe("API - Add Post to Bookmark", async () => {
       const body = await response.json();
       expect(body.code).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.code);
       expect(body.message).toBe(SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND.message);
-    }); */
+    });
 
     it("should bookmark the post if the post exist and is visible from the user", async () => {
       const response = await auth.api.addPostToBookmarks({

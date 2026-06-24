@@ -85,6 +85,7 @@ export const Post = z.object({
   likesCount: z.number().int().positive().default(0),
   commentsCount: z.number().int().positive().default(0),
   sharesCount: z.number().int().positive().default(0),
+  private: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
