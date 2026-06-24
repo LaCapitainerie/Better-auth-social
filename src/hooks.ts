@@ -65,4 +65,9 @@ export type SocialNetworkHooks = {
    * Called when a post is added to bookmarks
    */
   onPostAddToBookmarks?: (data: PostBookmark) => Promise<void> | void;
+
+  /**
+   * Called when a post is removed from bookmarks
+   */
+  onPostRemoveFromBookmarks?: (data: PostBookmark) => Promise<void> | void;
 }
