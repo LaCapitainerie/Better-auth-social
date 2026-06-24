@@ -194,6 +194,27 @@ const { post } = await auth.api.likePost({
 
 ---
 
+### Bookmark
+
+Save post to your bookmark to find them later
+
+#### Example
+
+```typescript
+await auth.api.addPostToBookmark({
+  body: { postId: "post-id" },
+  headers,
+});
+```
+
+| Method | Route | Body / Query |
+|--------|--------|---------------|
+| GET | `/social/post/bookmark/list` | — |
+| POST | `/social/post/bookmark/add` | `{ postId: Post["id"] }` |
+| POST | `/social/post/bookmark/remove` | `{ postId: Post["id"] }` |
+
+---
+
 ## Hooks
 
 A few hooks to react to events (all optional, async supported):
