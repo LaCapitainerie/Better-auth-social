@@ -100,3 +100,13 @@ export const PostLike = z.object({
 });
 
 export type PostLike = z.infer<typeof PostLike>;
+
+export const PostBookmark = z.object({
+  id: z.string(),
+  postId: z.string(),
+  userId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type PostBookmark = z.infer<typeof PostBookmark>;

@@ -10,6 +10,7 @@ import {
   GroupChatMessage,
   Post,
   PostLike,
+  PostBookmark,
 } from "./types.js";
 import { SOCIAL_NETWORK_ERROR_CODES } from "./error.js";
 
@@ -614,6 +615,30 @@ export class SocialNetworkAdapter {
         "INTERNAL_SERVER_ERROR",
         SOCIAL_NETWORK_ERROR_CODES.POST_FAILED_TO_UNLIKE,
       );
+    });
+  }
+
+  async addPostToBookmarks(userId: string, postId: string) {
+    return this.adapter.create<PostBookmark>({
+      model: "post_bookmark",
+      data: {
+        userId,
+        postId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }).catch(() => {
+      throw APIError.from(
+        "INTERNAL_SERVER_ERROR",
+        SOCIAL_NETWORK_ERROR_CODES.POST_BOOKMARK_FAILED_TO_ADD_TO_BOOKMARKS,
+      );
+    });
+  }
+
+  async isPostBookmarked(postId: string, userId: string) {
+    return this.adapter.findOne<PostBookmark>({
+      model: "post_bookmark",
+      where: [{ field: "postId", value: postId }, { field: "userId", value: userId }],
     });
   }
 }

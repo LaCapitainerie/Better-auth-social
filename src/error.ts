@@ -143,6 +143,11 @@ export const SOCIAL_NETWORK_ERROR_CODES = defineErrorCodes({
    */
   MAX_GROUP_SIZE: 'Group size exceeds the maximum allowed size',
 
+  /**
+   * @feature PostBookmark
+   */
+  POST_BOOKMARK_FAILED_TO_ADD_TO_BOOKMARKS: 'Failed to add post to bookmarks',
+
 });
 
 /**

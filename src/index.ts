@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { getSchema } from './schema.js';
 import { SOCIAL_NETWORK_ERROR_CODES } from './error.js';
 import { SocialNetworkOptions } from './options.js';
-import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post, PostLike } from './types.js';
+import { FriendRequest, Friend, Chat, GroupChat, GroupChatMember, ChatMessage, GroupChatMessage, BlockedUser, Post, PostLike, PostBookmark } from './types.js';
 import { SocialNetworkAdapter } from './adapter.js';
 
 // Source - https://stackoverflow.com/a/64489535
@@ -1539,6 +1539,43 @@ export const socialNetwork = (options?: SocialNetworkOptions) => {
         }
 
         return ctx.json({ post: updatedPost });
+      }),
+      addPostToBookmarks: createAuthEndpoint('/social/post/bookmark/add', {
+        method: "POST",
+        body: z.object({
+          postId: z.string(),
+        }),
+        response: z.object({
+          postBookmark: PostBookmark,
+        }),
+        use: [sessionMiddleware],
+      }, async (ctx) => {
+        const { postId } = ctx.body;
+        const userId = ctx.context.session?.user.id;
+
+        if (!userId) {
+          throw APIError.from('UNAUTHORIZED', SOCIAL_NETWORK_ERROR_CODES.UNAUTHORIZED);
+        }
+
+        if (!postId || postId.length === 0) {
+          throw APIError.from('BAD_REQUEST', SOCIAL_NETWORK_ERROR_CODES.POST_ID_REQUIRED);
+        }
+
+        const socialNetworkAdapter = new SocialNetworkAdapter(ctx.context.adapter);
+
+        const post = await socialNetworkAdapter.getPostById(postId);
+        if (!post) {
+          throw APIError.from('NOT_FOUND', SOCIAL_NETWORK_ERROR_CODES.POST_NOT_FOUND);
+        }
+
+        const existingBookmark = await socialNetworkAdapter.isPostBookmarked(postId, userId);
+        if (existingBookmark) {
+          return ctx.json({ postBookmark: existingBookmark });
+        }
+
+        const postBookmark = await socialNetworkAdapter.addPostToBookmarks(userId, postId);
+
+        return ctx.json({ postBookmark });
       }),
     },
   } satisfies BetterAuthPlugin;
