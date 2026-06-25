@@ -58,3 +58,5 @@ lerna-debug.log*
 /packages/plugins/.db/
 
 .idea/
+
+.pnpm-store/
