@@ -1,6 +1,6 @@
 {
   "name": "better-auth-social",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "A social network plugin for Better Auth with friends, friend requests, chat, and group chat features.",
   "author": "LaCapitainerie",
   "main": "dist/index.js",
